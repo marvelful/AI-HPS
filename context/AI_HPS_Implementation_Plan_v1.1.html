@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI-HPS — AI Agent Implementation Plan v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#070F1A;--navy-mid:#0D1B2E;--navy-light:#132339;--navy-border:#1A2F48;
+  --text:#C4D8EE;--text-dim:#7BA3C4;--text-muted:#3F6A90;
+  --teal:#00ACC1;--green:#43A047;--amber:#FB8C00;--red:#E53935;
+  --hgd-blue:#004A8F;--hgd-orange:#E8620A;
+  --card-bg:rgba(19,35,57,0.6);--card-border:rgba(0,172,193,0.13);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased;}
+
+/* layout */
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:256px;flex-shrink:0;background:var(--navy-mid);border-right:1px solid var(--navy-border);position:sticky;top:0;height:100vh;overflow-y:auto;padding-bottom:40px;}
+.main-content{flex:1;min-width:0;}
+
+/* sidebar */
+.sb-logo{padding:22px 18px 14px;border-bottom:1px solid var(--navy-border);}
+.sb-logo-name{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:#F4F8FC;}
+.sb-logo-name span{color:var(--hgd-orange);}
+.sb-logo-sub{font-size:9px;color:var(--text-muted);letter-spacing:.9px;text-transform:uppercase;margin-top:3px;}
+.sb-sec{font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);padding:14px 18px 5px;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:6px 18px;text-decoration:none;color:var(--text-dim);font-size:11.5px;border-left:2px solid transparent;transition:all .13s;}
+.sb-item:hover{color:#F4F8FC;background:rgba(0,172,193,0.05);border-left-color:rgba(0,172,193,.3);}
+.sb-item.active{color:var(--teal);background:rgba(0,172,193,0.08);border-left-color:var(--teal);}
+.sb-num{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;flex-shrink:0;}
+.sn-agt{background:rgba(0,98,184,.3);color:#82B8F0;}
+.sn-svc{background:rgba(0,131,143,.25);color:#80D8E8;}
+.sn-infra{background:rgba(55,71,79,.4);color:#90A4AE;}
+
+/* cover */
+.cover{background:linear-gradient(155deg,#040B14 0%,#0A1825 45%,#0E1F35 100%);padding:68px 60px 60px;position:relative;overflow:hidden;border-bottom:1px solid var(--navy-border);}
+.cover::before{content:'';position:absolute;top:-120px;right:-80px;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(0,172,193,0.07) 0%,transparent 70%);pointer-events:none;}
+.cover::after{content:'';position:absolute;bottom:-60px;left:220px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(232,98,10,0.05) 0%,transparent 70%);pointer-events:none;}
+.cover-eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--teal);text-transform:uppercase;margin-bottom:14px;}
+.cover-title{font-family:'DM Serif Display',serif;font-size:46px;line-height:1.1;color:#F4F8FC;max-width:620px;margin-bottom:6px;}
+.cover-title em{font-style:italic;color:var(--teal);}
+.cover-sub{font-size:15px;color:var(--text-dim);max-width:560px;margin:14px 0 28px;line-height:1.6;font-weight:300;}
+.cover-stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:24px;}
+.cover-stat{background:rgba(0,172,193,0.06);border:1px solid rgba(0,172,193,0.15);border-radius:8px;padding:12px 20px;min-width:110px;}
+.cover-stat-num{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;color:var(--teal);line-height:1;}
+.cover-stat-lbl{font-size:10px;color:var(--text-dim);margin-top:4px;}
+.cover-meta{display:flex;gap:28px;flex-wrap:wrap;margin-top:28px;padding-top:28px;border-top:1px solid var(--navy-border);}
+.cover-meta-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:3px;}
+.cover-meta-val{font-size:12px;color:var(--text);font-weight:500;}
+
+/* section header */
+.sec-hdr{padding:44px 56px 20px;border-bottom:1px solid var(--navy-border);}
+.sec-ey{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;}
+.sec-title{font-family:'DM Serif Display',serif;font-size:26px;color:#F4F8FC;line-height:1.2;}
+.sec-desc{font-size:12.5px;color:var(--text-dim);margin-top:7px;max-width:680px;font-weight:300;}
+
+/* agent card */
+.agent-card{margin:28px 44px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;overflow:hidden;}
+.agent-header{padding:22px 28px 18px;border-bottom:1px solid var(--navy-border);display:flex;align-items:flex-start;gap:18px;}
+.agent-badge{width:42px;height:42px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;flex-shrink:0;}
+.agent-name{font-family:'DM Serif Display',serif;font-size:21px;color:#F4F8FC;line-height:1.2;}
+.agent-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;}
+.atag{font-size:9.5px;font-weight:600;letter-spacing:.4px;padding:2px 8px;border-radius:4px;}
+
+/* kpi row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--navy-border);}
+.kpi-cell{padding:14px 18px;border-right:1px solid var(--navy-border);}
+.kpi-cell:last-child{border-right:none;}
+.kpi-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;}
+.kpi-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--teal);}
+
+/* agent body */
+.agent-body{padding:24px 28px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.agent-body.full{grid-template-columns:1fr;}
+.agent-body.three{grid-template-columns:1fr 1fr 1fr;}
+.ib{background:rgba(7,15,26,0.55);border:1px solid rgba(255,255,255,0.05);border-radius:9px;padding:16px 18px;}
+.ib.span2{grid-column:span 2;}
+.ib.span3{grid-column:span 3;}
+.ib-title{font-size:9.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--teal);margin-bottom:11px;display:flex;align-items:center;gap:6px;}
+.ib-title::before{content:'';display:block;width:3px;height:11px;border-radius:2px;background:var(--teal);}
+
+/* content */
+.ip{font-size:12px;color:var(--text-dim);line-height:1.65;font-weight:300;margin-bottom:7px;}
+.ip:last-child{margin-bottom:0;}
+.ip strong{color:var(--text);font-weight:500;}
+.ip code,.il code,.ib-title code{font-family:'DM Mono',monospace;font-size:10.5px;background:rgba(0,172,193,0.1);color:var(--teal);padding:1px 5px;border-radius:3px;}
+.il{list-style:none;padding:0;margin:0;}
+.il li{font-size:12px;color:var(--text-dim);line-height:1.55;padding:4px 0 4px 15px;position:relative;font-weight:300;border-bottom:1px solid rgba(255,255,255,0.03);}
+.il li:last-child{border-bottom:none;}
+.il li::before{content:'›';position:absolute;left:2px;color:var(--teal);font-size:11px;opacity:.7;}
+.il li strong{color:var(--text);font-weight:500;}
+
+/* pipeline */
+.pipe-row{display:flex;align-items:stretch;gap:0;margin:7px 0;}
+.pipe-step{flex:1;background:rgba(0,172,193,0.05);border:1px solid rgba(0,172,193,0.12);border-radius:5px;padding:9px 11px;font-size:10.5px;color:var(--text-dim);}
+.pipe-step strong{color:var(--teal);font-size:10px;display:block;margin-bottom:2px;}
+.pipe-arrow{width:22px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;flex-shrink:0;}
+
+/* stack grid */
+.stack-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
+.stack-item{background:rgba(7,15,26,0.7);border:1px solid rgba(255,255,255,0.05);border-radius:5px;padding:9px 11px;}
+.stack-lyr{font-size:9px;color:var(--text-muted);letter-spacing:.7px;text-transform:uppercase;margin-bottom:3px;}
+.stack-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);}
+.stack-note{font-size:10px;color:var(--text-dim);margin-top:2px;font-weight:300;}
+
+/* integration */
+.int-list{display:flex;flex-direction:column;gap:5px;}
+.int-item{display:flex;align-items:center;gap:9px;padding:6px 9px;background:rgba(7,15,26,0.5);border-radius:5px;font-size:11px;}
+.int-svc{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);min-width:78px;}
+.int-dir{font-size:9.5px;color:var(--text-muted);padding:1px 5px;background:rgba(255,255,255,0.04);border-radius:3px;flex-shrink:0;}
+.int-desc{color:var(--text-dim);font-weight:300;}
+
+/* phases */
+.phase-list{display:flex;flex-direction:column;gap:9px;}
+.phase-item{display:flex;gap:12px;align-items:flex-start;}
+.phase-num{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--teal);color:var(--teal);font-family:'DM Mono',monospace;font-size:9px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.phase-title{font-size:11.5px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.phase-wks{font-family:'DM Mono',monospace;font-size:9px;color:var(--teal);margin-left:5px;}
+.phase-desc{font-size:11px;color:var(--text-dim);font-weight:300;line-height:1.5;}
+
+/* risk table */
+.rt{width:100%;border-collapse:collapse;font-size:11px;}
+.rt th{text-align:left;font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted);padding:5px 9px;border-bottom:1px solid var(--navy-border);}
+.rt td{padding:6px 9px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text-dim);vertical-align:top;line-height:1.4;}
+.rt tr:last-child td{border-bottom:none;}
+.rt td strong{color:var(--text);font-weight:500;}
+.rs{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;}
+.rs-hi{background:rgba(229,57,53,0.15);color:#EF9A9A;}
+.rs-md{background:rgba(251,140,0,0.12);color:#FFCC80;}
+.rs-lo{background:rgba(67,160,71,0.1);color:#A5D6A7;}
+
+/* data table */
+.dt{width:100%;border-collapse:collapse;font-size:11px;}
+.dt th{text-align:left;font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted);padding:5px 8px;border-bottom:1px solid var(--navy-border);white-space:nowrap;}
+.dt td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text-dim);vertical-align:top;line-height:1.4;font-weight:300;}
+.dt tr:last-child td{border-bottom:none;}
+.dt td:first-child{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);font-weight:500;}
+.req{color:#EF9A9A;font-size:9px;font-weight:600;}
+.opt{color:#A5D6A7;font-size:9px;font-weight:600;}
+
+/* callout */
+.callout{background:rgba(0,172,193,0.06);border-left:3px solid var(--teal);border-radius:0 7px 7px 0;padding:11px 14px;margin:9px 0;font-size:11.5px;color:var(--text-dim);font-weight:300;line-height:1.5;}
+.callout strong{color:var(--teal);font-weight:500;}
+.callout.warn{background:rgba(251,140,0,0.06);border-left-color:var(--amber);}
+.callout.warn strong{color:var(--amber);}
+.callout.danger{background:rgba(229,57,53,0.06);border-left-color:var(--red);}
+.callout.danger strong{color:var(--red);}
+
+/* val-row */
+.val-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:7px;}
+.val-item{background:rgba(7,15,26,0.6);border-radius:5px;padding:9px 11px;border-left:2px solid var(--teal);}
+.val-metric{font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);margin-bottom:2px;}
+.val-desc{font-size:10px;color:var(--text-dim);font-weight:300;}
+
+/* arch */
+.arch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px;}
+.arch-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:18px;}
+.arch-lbl{font-size:9.5px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;margin-bottom:10px;}
+.arch-item{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;color:var(--text-dim);}
+.arch-item:last-child{border-bottom:none;}
+.arch-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* svc grid */
+.svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;padding-top:20px;border-top:1px solid var(--navy-border);}
+.svc-card{background:rgba(0,172,193,0.05);border:1px solid rgba(0,172,193,0.12);border-radius:7px;padding:13px 15px;}
+.svc-name{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--teal);margin-bottom:3px;}
+.svc-desc{font-size:10px;color:var(--text-dim);line-height:1.4;font-weight:300;}
+
+/* timeline table */
+.tl-wrap{overflow-x:auto;margin-top:22px;}
+.tl-table{width:100%;border-collapse:collapse;min-width:900px;}
+.tl-agent{text-align:left;font-size:10.5px;color:var(--text-dim);padding:5px 8px 5px 0;width:220px;font-weight:300;}
+.tl-wk-hdr{font-family:'DM Mono',monospace;font-size:9px;color:var(--text-muted);text-align:center;padding:4px 2px;}
+.tl-bar{height:20px;border-radius:4px;margin:2px;display:flex;align-items:center;padding:0 6px;}
+.tl-bar span{font-size:8.5px;font-weight:600;white-space:nowrap;overflow:hidden;}
+.tl-empty{height:20px;margin:2px;}
+
+/* footer */
+.doc-footer{padding:28px 44px;border-top:1px solid var(--navy-border);display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--text-muted);}
+.doc-footer-logo{font-family:'DM Mono',monospace;font-size:12px;color:var(--text-dim);}
+.doc-footer-logo span{color:var(--hgd-orange);}
+
+.section-divider{height:1px;background:linear-gradient(to right,transparent,var(--navy-border),transparent);margin:0 44px;}
+@media print{body{background:#fff;color:#111;font-size:11px;}.sidebar{display:none;}.main-content{margin-left:0;}.agent-card{break-inside:avoid;}}</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="sidebar">
+  <div class="sb-logo"><div class="sb-logo-name">AI-<span>HPS</span></div><div class="sb-logo-sub">AI Implementation Plan v1.1</div></div>
+  <div class="sb-sec">Overview</div>
+  <a href="#architecture" class="sb-item"><span class="sb-num" style="background:rgba(0,172,193,.1);color:var(--teal);">⊞</span>System Architecture</a>
+  <a href="#timeline" class="sb-item"><span class="sb-num" style="background:rgba(0,172,193,.1);color:var(--teal);">⊡</span>Master Timeline</a>
+  <div class="sb-sec">AI Agents — Pipeline</div>
+  <a href="#agent-1" class="sb-item"><span class="sb-num sn-agt">R</span>AGENT-R · Router</a>
+  <a href="#agent-2" class="sb-item"><span class="sb-num sn-agt">C</span>AGENT-C · Conv. + Dept Info</a>
+  <a href="#agent-3" class="sb-item"><span class="sb-num sn-agt">N</span>AGENT-N · Navigation</a>
+  <a href="#agent-4" class="sb-item"><span class="sb-num sn-agt">P</span>AGENT-P · Procedure RAG</a>
+  <a href="#agent-5" class="sb-item"><span class="sb-num sn-agt" style="background:rgba(229,57,53,.25);color:#FFCDD2;">E</span>AGENT-E · Emergency</a>
+  <a href="#agent-6" class="sb-item"><span class="sb-num sn-agt">O</span>AGENT-O · Output Opt.</a>
+  <div class="sb-sec">Business Services</div>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">01</span>API Gateway (SVC-01)</a>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">02</span>Auth &amp; RBAC (SVC-02)</a>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">03</span>Procedure Mgmt (SVC-03)</a>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">04</span>Notifications (SVC-04)</a>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">05</span>Analytics (SVC-05)</a>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">06</span>Audit &amp; Compliance (SVC-06)</a>
+  <a href="#services" class="sb-item"><span class="sb-num sn-svc">07</span>KB Sync (SVC-07)</a>
+  <div class="sb-sec">Infrastructure</div>
+  <a href="#infra" class="sb-item"><span class="sb-num sn-infra">MQ</span>RabbitMQ (INF-01)</a>
+  <a href="#infra" class="sb-item"><span class="sb-num sn-infra">RD</span>Redis (INF-02)</a>
+  <a href="#infra" class="sb-item"><span class="sb-num sn-infra">DB</span>PostgreSQL + FAISS</a>
+</nav>
+<div class="main-content">
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-eyebrow">AI-HPS v1.1 · Technical Implementation Document · Updated Architecture</div>
+  <div class="cover-title">AI Agent<br><em>Implementation Plan</em></div>
+  <div class="cover-sub">Updated implementation specifications for the refined 6-agent architecture. AGENT-I and AGENT-F have been replaced by platform functions: department information is retrieved directly by AGENT-C, and content filtering is enforced internally by AGENT-P.</div>
+  <div class="cover-stats">
+    <div class="cover-stat"><div class="cover-stat-num">6</div><div class="cover-stat-lbl">AI Agents</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">7</div><div class="cover-stat-lbl">Business Services</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">24</div><div class="cover-stat-lbl">Week Timeline</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">5</div><div class="cover-stat-lbl">Platforms</div></div>
+    <div class="cover-stat"><div class="cover-stat-num">90+</div><div class="cover-stat-lbl">Functional Reqs</div></div>
+  </div>
+  <div class="cover-meta">
+    <div><div class="cover-meta-lbl">Version</div><div class="cover-meta-val">1.1 · Based on SRS v3.1 + SDS v1.1</div></div>
+    <div><div class="cover-meta-lbl">Prepared By</div><div class="cover-meta-val">FUL MARVEL</div></div>
+    <div><div class="cover-meta-lbl">Supervisor</div><div class="cover-meta-val">Dr. Tabueu Cabrel</div></div>
+    <div><div class="cover-meta-lbl">Institution</div><div class="cover-meta-val">Institut Universitaire de la Cote (IUC) · SEAS</div></div>
+    <div><div class="cover-meta-lbl">Target</div><div class="cover-meta-val">Hôpital Général de Douala, Cameroon</div></div>
+    <div><div class="cover-meta-lbl">Key Change</div><div class="cover-meta-val">AGENT-I removed → AGENT-C handles dept info. AGENT-F removed → AGENT-P filters internally.</div></div>
+  </div>
+</div>
+
+
+<div id="architecture" class="sec-hdr">
+  <div class="sec-ey" style="color:var(--teal);">System Overview</div>
+  <div class="sec-title">Shared Architecture &amp; Infrastructure</div>
+  <div class="sec-desc">All 6 AI agents share a common LangGraph state graph and the same AIHPSState typed context object. AGENT-C handles department information directly from the DB. AGENT-P applies content filters internally before every retrieval. The platform-first design means all business services function independently of the AI pipeline.</div>
+</div>
+<div style="padding:28px 44px;">
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="arch-lbl" style="color:#82B8F0;">AI Pipeline — 6 Agents (LangGraph)</div>
+      <div class="arch-item"><span class="arch-dot" style="background:#82B8F0;"></span>AGENT-R · Router &amp; Intent Classifier (AGT-01)</div><div class="arch-item"><span class="arch-dot" style="background:#82B8F0;"></span>AGENT-C · Conversational Agent + Dept Info (AGT-02)</div><div class="arch-item"><span class="arch-dot" style="background:#82B8F0;"></span>AGENT-N · Navigation Agent (AGT-03)</div><div class="arch-item"><span class="arch-dot" style="background:#82B8F0;"></span>AGENT-P · Procedure Intelligence + Internal Filtering (AGT-04)</div><div class="arch-item"><span class="arch-dot" style="background:#82B8F0;"></span>AGENT-E · Emergency Agent — interrupt (AGT-05)</div><div class="arch-item"><span class="arch-dot" style="background:#82B8F0;"></span>AGENT-O · Output Optimisation Agent (AGT-06)</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-lbl" style="color:#FFB88A;">Business Services — 7 Microservices</div>
+      <div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-01 · API Gateway (Nginx)</div><div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-02 · Auth &amp; RBAC Service</div><div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-03 · Procedure Management</div><div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-04 · Notification Service</div><div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-05 · Analytics Service</div><div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-06 · Audit &amp; Compliance</div><div class="arch-item"><span class="arch-dot" style="background:#E8620A;"></span>SVC-07 · Knowledge Base Sync</div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-lbl" style="color:#A5D6A7;">Infrastructure &amp; Data</div>
+      <div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>PostgreSQL 15 (AWS RDS) — procedure data</div><div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>Redis 7 (AWS ElastiCache) — sessions, cache</div><div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>RabbitMQ 3.12 — durable async events</div><div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>FAISS → Pinecone — vector knowledge base</div><div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>AWS ECS — container orchestration</div><div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>Twilio — WhatsApp &amp; SMS (Stream A)</div><div class="arch-item"><span class="arch-dot" style="background:#43A047;"></span>Africa's Talking — USSD (Stream A)</div>
+    </div>
+  </div>
+  <div class="svc-grid">
+    <div class="svc-card"><div class="svc-name">LangGraph State Contract</div><div class="svc-desc">AIHPSState TypedDict flows through every agent node. Agents communicate via shared state — no inter-agent HTTP calls.</div></div>
+    <div class="svc-card"><div class="svc-name">Audit Event Bus</div><div class="svc-desc">Every agent publishes audit events to RabbitMQ → SVC-06. Guaranteed delivery via durable queues.</div></div>
+    <div class="svc-card"><div class="svc-name">Emergency Override Contract</div><div class="svc-desc">is_emergency=True routes immediately to AGENT-E. All other agents bypassed. Zero false-negative tolerance.</div></div>
+    <div class="svc-card"><div class="svc-name">Platform-First Invariant</div><div class="svc-desc">SVC-01 to SVC-07 and the procedure database operate independently of all 6 agents. AI failure must not make procedures inaccessible.</div></div>
+  </div>
+  <div class="callout" style="margin-top:16px;"><strong>Architecture note:</strong> All 6 agents are Python async functions in a single LangGraph <code>StateGraph</code> running within one FastAPI application. Department information is now retrieved by AGENT-C directly from the departments table (no dedicated agent). Content filtering (stream_target, role, status) is enforced by AGENT-P internally before every retrieval call. Both responsibilities are integrated into existing agents, reducing complexity and the total agent count from 8 to 6.</div>
+</div>
+<div class="section-divider"></div>
+<div id="timeline">
+<div style="padding:36px 44px;">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:8px;">Delivery Schedule</div>
+  <div style="font-family:'DM Serif Display',serif;font-size:24px;color:#F4F8FC;">Master Implementation Timeline — 24 Weeks</div>
+  <div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-weight:300;">6 agents + 7 business services across 24 weeks. Integration and testing from Week 13. Academic defense in Week 24.</div>
+  <div class="tl-wrap">
+    <table class="tl-table">
+      <thead><tr>
+        <th style="width:200px;text-align:left;font-size:10px;color:var(--text-muted);padding:4px 8px 4px 0;">Component</th>
+        <th class="tl-wk-hdr">W1</th><th class="tl-wk-hdr">W2</th><th class="tl-wk-hdr">W3</th><th class="tl-wk-hdr">W4</th><th class="tl-wk-hdr">W5</th><th class="tl-wk-hdr">W6</th><th class="tl-wk-hdr">W7</th><th class="tl-wk-hdr">W8</th><th class="tl-wk-hdr">W9</th><th class="tl-wk-hdr">W10</th><th class="tl-wk-hdr">W11</th><th class="tl-wk-hdr">W12</th><th class="tl-wk-hdr">W13</th><th class="tl-wk-hdr">W14</th><th class="tl-wk-hdr">W15</th><th class="tl-wk-hdr">W16</th><th class="tl-wk-hdr">W17</th><th class="tl-wk-hdr">W18</th><th class="tl-wk-hdr">W19</th><th class="tl-wk-hdr">W20</th><th class="tl-wk-hdr">W21</th><th class="tl-wk-hdr">W22</th><th class="tl-wk-hdr">W23</th><th class="tl-wk-hdr">W24</th>
+      </tr></thead>
+      <tbody><tr><td class="tl-agent">AGENT-R (Router)</td><td colspan="4" style="padding:1px 2px;"><div class="tl-bar" style="background:#0D5FAD33;border:1px solid #0D5FAD55;"><span style="color:#0D5FAD;font-size:8px;font-weight:600;">W1–W4</span></div></td><td colspan="2" style="padding:1px 2px;"><div class="tl-bar" style="background:#0D5FAD33;border:1px solid #0D5FAD55;"><span style="color:#0D5FAD;font-size:8px;font-weight:600;">W5–W6</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">AGENT-C (Conversational + Info)</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="3" style="padding:1px 2px;"><div class="tl-bar" style="background:#0B7A5E33;border:1px solid #0B7A5E55;"><span style="color:#0B7A5E;font-size:8px;font-weight:600;">W3–W5</span></div></td><td colspan="3" style="padding:1px 2px;"><div class="tl-bar" style="background:#0B7A5E33;border:1px solid #0B7A5E55;"><span style="color:#0B7A5E;font-size:8px;font-weight:600;">W7–W9</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">AGENT-N (Navigation)</td><td colspan="3" style="padding:1px 2px;"><div class="tl-bar" style="background:#6B3FA033;border:1px solid #6B3FA055;"><span style="color:#6B3FA0;font-size:8px;font-weight:600;">W1–W3</span></div></td><td colspan="4" style="padding:1px 2px;"><div class="tl-bar" style="background:#6B3FA033;border:1px solid #6B3FA055;"><span style="color:#6B3FA0;font-size:8px;font-weight:600;">W4–W7</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">AGENT-P (Procedure RAG + Filters)</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="4" style="padding:1px 2px;"><div class="tl-bar" style="background:#8B000033;border:1px solid #8B000055;"><span style="color:#8B0000;font-size:8px;font-weight:600;">W5–W8</span></div></td><td colspan="6" style="padding:1px 2px;"><div class="tl-bar" style="background:#8B000033;border:1px solid #8B000055;"><span style="color:#8B0000;font-size:8px;font-weight:600;">W9–W14</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">AGENT-E (Emergency)</td><td colspan="3" style="padding:1px 2px;"><div class="tl-bar" style="background:#B71C1C33;border:1px solid #B71C1C55;"><span style="color:#B71C1C;font-size:8px;font-weight:600;">W1–W3</span></div></td><td colspan="5" style="padding:1px 2px;"><div class="tl-bar" style="background:#B71C1C33;border:1px solid #B71C1C55;"><span style="color:#B71C1C;font-size:8px;font-weight:600;">W4–W8</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">AGENT-O (Output Opt.)</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="3" style="padding:1px 2px;"><div class="tl-bar" style="background:#1A3A5A33;border:1px solid #1A3A5A55;"><span style="color:#1A3A5A;font-size:8px;font-weight:600;">W4–W6</span></div></td><td colspan="6" style="padding:1px 2px;"><div class="tl-bar" style="background:#1A3A5A33;border:1px solid #1A3A5A55;"><span style="color:#1A3A5A;font-size:8px;font-weight:600;">W7–W12</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-01 API Gateway</td><td colspan="3" style="padding:1px 2px;"><div class="tl-bar" style="background:#004A8F33;border:1px solid #004A8F55;"><span style="color:#004A8F;font-size:8px;font-weight:600;">W1–W3</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-02 Auth & RBAC</td><td><div class="tl-empty"></div></td><td colspan="4" style="padding:1px 2px;"><div class="tl-bar" style="background:#004A8F33;border:1px solid #004A8F55;"><span style="color:#004A8F;font-size:8px;font-weight:600;">W2–W5</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-03 Procedure Mgmt</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="5" style="padding:1px 2px;"><div class="tl-bar" style="background:#004A8F33;border:1px solid #004A8F55;"><span style="color:#004A8F;font-size:8px;font-weight:600;">W3–W7</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-04 Notifications</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="4" style="padding:1px 2px;"><div class="tl-bar" style="background:#E8620A33;border:1px solid #E8620A55;"><span style="color:#E8620A;font-size:8px;font-weight:600;">W7–W10</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-05 Analytics</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="4" style="padding:1px 2px;"><div class="tl-bar" style="background:#E8620A33;border:1px solid #E8620A55;"><span style="color:#E8620A;font-size:8px;font-weight:600;">W8–W11</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-06 Audit</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="5" style="padding:1px 2px;"><div class="tl-bar" style="background:#2E7D3233;border:1px solid #2E7D3255;"><span style="color:#2E7D32;font-size:8px;font-weight:600;">W4–W8</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">SVC-07 KB Sync</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="5" style="padding:1px 2px;"><div class="tl-bar" style="background:#2E7D3233;border:1px solid #2E7D3255;"><span style="color:#2E7D32;font-size:8px;font-weight:600;">W5–W9</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">Knowledge Base Population</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="9" style="padding:1px 2px;"><div class="tl-bar" style="background:#5B21B633;border:1px solid #5B21B655;"><span style="color:#5B21B6;font-size:8px;font-weight:600;">W6–W14</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">Integration & Testing</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="7" style="padding:1px 2px;"><div class="tl-bar" style="background:#37474F33;border:1px solid #37474F55;"><span style="color:#37474F;font-size:8px;font-weight:600;">W13–W19</span></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td></tr><tr><td class="tl-agent">Defense Demonstration</td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td><div class="tl-empty"></div></td><td colspan="5" style="padding:1px 2px;"><div class="tl-bar" style="background:#37474F33;border:1px solid #37474F55;"><span style="color:#37474F;font-size:8px;font-weight:600;">W20–W24</span></div></td></tr></tbody>
+    </table>
+  </div>
+  <div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-dim);"><div style="width:14px;height:9px;border-radius:3px;background:rgba(13,95,173,0.4);border:1px solid rgba(13,95,173,0.7);"></div>AI Agents</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-dim);"><div style="width:14px;height:9px;border-radius:3px;background:rgba(0,74,143,0.4);border:1px solid rgba(0,74,143,0.7);"></div>Business Services</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-dim);"><div style="width:14px;height:9px;border-radius:3px;background:rgba(91,33,182,0.4);border:1px solid rgba(91,33,182,0.7);"></div>Knowledge Base</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-dim);"><div style="width:14px;height:9px;border-radius:3px;background:rgba(55,71,79,0.4);border:1px solid rgba(55,71,79,0.7);"></div>Integration &amp; Defense</div>
+  </div>
+</div></div>
+<div class="section-divider"></div>
+
+<!-- AGENT SECTION -->
+<div class="sec-hdr">
+  <div class="sec-ey" style="color:#82B8F0;">AI Agent Pipeline — LangGraph StateGraph</div>
+  <div class="sec-title">Agents AGT-01 through AGT-06: Full Implementation Specifications</div>
+  <div class="sec-desc">All 6 agents are Python async functions registered as nodes in a single LangGraph StateGraph, running within one FastAPI application. AGENT-C handles both chatbot management and department information retrieval. AGENT-P applies internal content filters before every retrieval call. Emergency detection (AGENT-E) is a LangGraph interrupt node with highest priority.</div>
+</div>
+
+<div id="agent-1" class="agent-card">
+  <div class="agent-header">
+    <div class="agent-badge" style="background:#0D5FAD22;color:#0D5FAD;border:1px solid #0D5FAD55;">01</div>
+    <div style="flex:1"><div class="agent-name">AGENT-R — Router &amp; Intent Classifier</div><div class="agent-tags"><span class="atag" style="background:rgba(0,74,143,.2);color:#82B8F0;border:1px solid rgba(0,74,143,.35);">AGT-01 · :8001</span><span class="atag" style="background:rgba(0,172,193,.1);color:var(--teal);border:1px solid rgba(0,172,193,.22);">FR-R-01 to FR-R-12</span><span class="atag" style="background:rgba(232,98,10,.15);color:#FFAA7A;border:1px solid rgba(232,98,10,.3);">Stream A + B entry point</span><span class="atag" style="background:rgba(251,140,0,.1);color:#FFCC80;border:1px solid rgba(251,140,0,.22);">Emergency override mandatory</span></div></div>
+  </div>
+  <div class="kpi-row"><div class="kpi-cell"><div class="kpi-lbl">Deployment</div><div class="kpi-val">FastAPI + LangGraph node</div></div><div class="kpi-cell"><div class="kpi-lbl">Input</div><div class="kpi-val">All 5 channels</div></div><div class="kpi-cell"><div class="kpi-lbl">Output</div><div class="kpi-val">Routed context packet</div></div><div class="kpi-cell"><div class="kpi-lbl">Emergency</div><div class="kpi-val">< 200 ms — always first</div></div></div>
+  <div class="agent-body"><div class="ib">
+  <div class="ib-title">Purpose &amp; Role</div>
+  <div class="ip">AGENT-R is the single, mandatory entry point for every query entering the AI pipeline — regardless of platform, stream, or user role. It performs four sequential operations: emergency keyword detection, language classification, intent classification, and downstream routing. It generates no content.</div>
+  <div class="callout danger"><strong>Hard constraint:</strong> Emergency detection runs first, before any other step. If any emergency keyword matches, <code>is_emergency=True</code> is set and AGENT-E is called immediately. No LLM call is made for emergency queries.</div>
+</div>
+<div class="ib">
+  <div class="ib-title">Classification Pipeline</div>
+  <div class="pipe-row">
+    <div class="pipe-step"><strong>1. Emergency Check</strong>Regex against EN/FR keyword set. If match → AGENT-E immediately, stop.</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><strong>2. Language Detect</strong><code>langdetect</code>. EN/FR. Confidence threshold 0.70; fallback EN.</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><strong>3. Intent Classify</strong>GPT-4o structured output: navigation | information | procedure | unknown.</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><strong>4. Context Build</strong>Assemble AIHPSState: intent, language, platform, stream, user_role from JWT.</div>
+  </div>
+</div>
+<div class="ib span2">
+  <div class="ib-title">Routing Table</div>
+  <div class="int-list">
+    <div class="int-item"><span class="int-svc">emergency</span><span class="int-dir">→ AGENT-E</span><span class="int-desc">Highest priority. Pure regex — no LLM. All other agents bypassed.</span></div>
+    <div class="int-item"><span class="int-svc">navigation</span><span class="int-dir">→ AGENT-N</span><span class="int-desc">Route: AGENT-R → AGENT-N → AGENT-O. Deterministic DB retrieval.</span></div>
+    <div class="int-item"><span class="int-svc">information</span><span class="int-dir">→ AGENT-C (DB)</span><span class="int-desc">Department info. AGENT-C queries departments table directly — no LLM, no knowledge base. Route: AGENT-R → AGENT-C → AGENT-O.</span></div>
+    <div class="int-item"><span class="int-svc">procedure (chatbot)</span><span class="int-dir">→ AGENT-C</span><span class="int-desc">AGENT-C reformulates → AGENT-P (internal filters + RAG) → AGENT-O.</span></div>
+    <div class="int-item"><span class="int-svc">procedure (search/browse)</span><span class="int-dir">→ AGENT-P</span><span class="int-desc">AGENT-P applies internal filters then executes retrieval. Route: AGENT-R → AGENT-P → AGENT-O.</span></div>
+    <div class="int-item"><span class="int-svc">unknown</span><span class="int-dir">→ AGENT-O</span><span class="int-desc">Clarification prompt in detected language. No retrieval.</span></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Development Phases</div>
+  <div class="phase-list">
+    <div class="phase-item"><div class="phase-num">1</div><div><div class="phase-title">Emergency Keyword Set Definition<span class="phase-wks">Weeks 1–2</span></div><div class="phase-desc">Co-design EN/FR keyword sets with clinical stakeholder. Validate against 200 real emergency message examples.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div><div class="phase-title">Intent Classifier Prompt Engineering<span class="phase-wks">Weeks 2–4</span></div><div class="phase-desc">GPT-4o structured output prompt. Test 300 labelled queries across 5 intent classes. Target F1 ≥ 0.92.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div><div class="phase-title">LangGraph Node Implementation<span class="phase-wks">Weeks 4–6</span></div><div class="phase-desc">Implement agent_r(). Unit test all routing branches. Mock AGENT-E/N/P/O for isolation testing.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div><div class="phase-title">Integration &amp; Load Testing<span class="phase-wks">Weeks 7–9</span></div><div class="phase-desc">End-to-end pipeline testing. Emergency override tested under 200 concurrent requests.</div></div></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Risks &amp; Mitigations</div>
+  <table class="rt"><thead><tr><th>Risk</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th></tr></thead><tbody>
+    <tr><td><strong>Emergency keyword missed — colloquial expression</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Medium</td><td>Partial matching + common misspellings in regex. Clinical team reviews monthly. 200-sample adversarial test suite required.</td></tr>
+    <tr><td><strong>Intent misclassification routes to wrong agent</strong></td><td><span class="rs rs-md">High</span></td><td>Low</td><td>Unknown intent fallback asks clarification. AGENT-C handles repair on chatbot path. No dangerous misrouting possible.</td></tr>
+    <tr><td><strong>LLM latency causes AGENT-R to exceed target</strong></td><td><span class="rs rs-lo">Medium</span></td><td>Medium</td><td>Emergency path uses no LLM — always fast. Single low-token GPT-4o call for intent. Redis caches repeated identical intents 60s.</td></tr>
+  </tbody></table>
+</div></div>
+</div>
+<div id="agent-2" class="agent-card">
+  <div class="agent-header">
+    <div class="agent-badge" style="background:#0B7A5E22;color:#0B7A5E;border:1px solid #0B7A5E55;">02</div>
+    <div style="flex:1"><div class="agent-name">AGENT-C — Conversational Agent</div><div class="agent-tags"><span class="atag" style="background:rgba(0,74,143,.2);color:#82B8F0;border:1px solid rgba(0,74,143,.35);">AGT-02 · :8002</span><span class="atag" style="background:rgba(0,172,193,.1);color:var(--teal);border:1px solid rgba(0,172,193,.22);">FR-C-01 to FR-C-08 · FR-DI-01 to FR-DI-05</span><span class="atag" style="background:rgba(67,160,71,.12);color:#A5D6A7;border:1px solid rgba(67,160,71,.25);">Chatbot + Dept Info</span><span class="atag" style="background:rgba(67,160,71,.12);color:#A5D6A7;border:1px solid rgba(67,160,71,.25);">Redis session · 30-min TTL</span></div></div>
+  </div>
+  <div class="kpi-row"><div class="kpi-cell"><div class="kpi-lbl">Deployment</div><div class="kpi-val">LangGraph node (FastAPI)</div></div><div class="kpi-cell"><div class="kpi-lbl">Session store</div><div class="kpi-val">Redis (TTL 30 min)</div></div><div class="kpi-cell"><div class="kpi-lbl">LLM</div><div class="kpi-val">GPT-4o (chatbot path)</div></div><div class="kpi-cell"><div class="kpi-lbl">Info queries</div><div class="kpi-val">Direct DB — no LLM</div></div></div>
+  <div class="agent-body"><div class="ib">
+  <div class="ib-title">Purpose &amp; Role — Two Responsibilities</div>
+  <div class="ip"><strong>1. Chatbot management</strong> — activated when <code>chatbot_mode=True</code>. Maintains multi-turn conversation context, reformulates ambiguous queries into precise retrieval requests, and presents AGENT-P's structured procedure responses in natural conversational format. Does not retrieve procedures — delegates to AGENT-P (which applies internal filters).</div>
+  <div class="ip"><strong>2. Department information retrieval</strong> — activated when AGENT-R classifies intent as 'information'. Retrieves department metadata (services, hours, contacts, location) directly from the PostgreSQL departments table. No LLM call, no knowledge base query — pure deterministic DB retrieval.</div>
+</div>
+<div class="ib">
+  <div class="ib-title">Chatbot Session Design</div>
+  <ul class="il">
+    <li><strong>Session key:</strong> <code>session:{user_id}:{platform}</code> in Redis. TTL: 30 minutes, refreshed on every message.</li>
+    <li><strong>History:</strong> Array of <code>{role, content}</code>. Max 10 turns retained (sliding window).</li>
+    <li><strong>Persistence:</strong> Survives app close/reopen within TTL. Fresh start on expiry.</li>
+    <li><strong>Clarification gate:</strong> If reformulated query confidence &lt; 0.60 → return one clarifying question, do not call AGENT-P.</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Department Info Retrieval (replaces AGENT-I)</div>
+  <ul class="il">
+    <li>Direct SELECT from departments table using semantic name matching (sentence-transformers cosine similarity ≥ 0.65).</li>
+    <li>Returns: name, services, operating hours, location, contact details — in detected language.</li>
+    <li>No match (score &lt; 0.65): returns standard redirect message. No LLM generation.</li>
+    <li>The in-memory department name embedding index is shared with AGENT-N — loaded once at startup.</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Integration Points</div>
+  <div class="int-list">
+    <div class="int-item"><span class="int-svc">AGENT-R</span><span class="int-dir">receives (chatbot)</span><span class="int-desc">Activated when chatbot_mode=True</span></div>
+    <div class="int-item"><span class="int-svc">AGENT-R</span><span class="int-dir">receives (info)</span><span class="int-desc">Activated when intent=information — queries departments table directly</span></div>
+    <div class="int-item"><span class="int-svc">Redis (INF-02)</span><span class="int-dir">reads/writes</span><span class="int-desc">Chatbot session history per user+platform</span></div>
+    <div class="int-item"><span class="int-svc">AGENT-P (AGT-04)</span><span class="int-dir">produces</span><span class="int-desc">Passes reformulated_query to AGENT-P for procedure retrieval</span></div>
+    <div class="int-item"><span class="int-svc">departments table</span><span class="int-dir">reads</span><span class="int-desc">Direct SQL for information-intent queries — no knowledge base</span></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Development Phases</div>
+  <div class="phase-list">
+    <div class="phase-item"><div class="phase-num">1</div><div><div class="phase-title">Dept Info Retrieval Implementation<span class="phase-wks">Weeks 3–5</span></div><div class="phase-desc">Implement direct departments table query with semantic name resolution. Share embedding index with AGENT-N. Test all 6 Phase 1 departments + out-of-scope redirect.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div><div class="phase-title">System Prompt Engineering<span class="phase-wks">Weeks 4–6</span></div><div class="phase-desc">GPT-4o prompt for query reformulation. Confidence scoring. Test 200 ambiguous procedure queries.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div><div class="phase-title">Redis Session Integration<span class="phase-wks">Weeks 6–8</span></div><div class="phase-desc">Session persistence, 30-min TTL, restoration on reopen, sliding window truncation.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div><div class="phase-title">End-to-End Chatbot Flow Testing<span class="phase-wks">Weeks 9–11</span></div><div class="phase-desc">Multi-turn dialogue testing. Session restoration. Load test 50 concurrent sessions.</div></div></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Risks &amp; Mitigations</div>
+  <table class="rt"><thead><tr><th>Risk</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th></tr></thead><tbody>
+    <tr><td><strong>Reformulation changes clinical meaning of query</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Low</td><td>Prompt engineering prohibits clinical assumptions. All reformulations logged. SRS FR-C-04: must not change clinical intent.</td></tr>
+    <tr><td><strong>Redis session expiry mid-consultation</strong></td><td><span class="rs rs-lo">Medium</span></td><td>Medium</td><td>30-min TTL with activity refresh. On expiry: user shown message; procedure still accessible via browse/search.</td></tr>
+    <tr><td><strong>GPT-4o failure blocks chatbot path</strong></td><td><span class="rs rs-lo">Medium</span></td><td>Low</td><td>System falls back to search bar (AGENT-P directly). "Chat unavailable. Use search." Browse and search fully operational.</td></tr>
+    <tr><td><strong>Dept info outdated in departments table</strong></td><td><span class="rs rs-lo">Medium</span></td><td>High</td><td>180-day staleness warning in admin dashboard. Admin must confirm annually. All updates logged to audit.</td></tr>
+  </tbody></table>
+</div></div>
+</div>
+<div id="agent-3" class="agent-card">
+  <div class="agent-header">
+    <div class="agent-badge" style="background:#6B3FA022;color:#6B3FA0;border:1px solid #6B3FA055;">03</div>
+    <div style="flex:1"><div class="agent-name">AGENT-N — Navigation Agent</div><div class="agent-tags"><span class="atag" style="background:rgba(0,74,143,.2);color:#82B8F0;border:1px solid rgba(0,74,143,.35);">AGT-03 · :8003</span><span class="atag" style="background:rgba(0,172,193,.1);color:var(--teal);border:1px solid rgba(0,172,193,.22);">FR-N-01 to FR-N-07</span><span class="atag" style="background:rgba(67,160,71,.12);color:#A5D6A7;border:1px solid rgba(67,160,71,.25);">Deterministic — no LLM</span><span class="atag" style="background:rgba(232,98,10,.15);color:#FFAA7A;border:1px solid rgba(232,98,10,.3);">Stream A primary</span></div></div>
+  </div>
+  <div class="kpi-row"><div class="kpi-cell"><div class="kpi-lbl">Deployment</div><div class="kpi-val">LangGraph node (FastAPI)</div></div><div class="kpi-cell"><div class="kpi-lbl">Retrieval</div><div class="kpi-val">PostgreSQL navigation_paths</div></div><div class="kpi-cell"><div class="kpi-lbl">LLM used</div><div class="kpi-val">None — fully deterministic</div></div><div class="kpi-cell"><div class="kpi-lbl">Offline</div><div class="kpi-val">Full (no API dependency)</div></div></div>
+  <div class="agent-body"><div class="ib">
+  <div class="ib-title">Purpose &amp; Role</div>
+  <div class="ip">AGENT-N provides hospital wayfinding — directions from any entry point to any mapped department. Fully deterministic: all directions are authored by administrators, stored in PostgreSQL, and retrieved verbatim. Zero hallucination risk. Semantic destination resolution uses a pre-computed in-memory embedding index shared with AGENT-C.</div>
+</div>
+<div class="ib">
+  <div class="ib-title">Destination Resolution Algorithm</div>
+  <ul class="il">
+    <li><strong>Startup:</strong> Encode all department names and <code>informal_names[]</code> with <code>paraphrase-multilingual-MiniLM-L12-v2</code>. Cache in memory. Shared with AGENT-C.</li>
+    <li><strong>Resolution:</strong> Encode destination phrase from query. Cosine similarity against in-memory index. Match threshold ≥ 0.65.</li>
+    <li><strong>No match:</strong> "Department not found. Please ask at the main reception desk." — no guessing below threshold.</li>
+    <li><strong>Language:</strong> Retrieve path matching detected language. Fallback to alternate with notice.</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Phase 1 Mapped Destinations (minimum 10)</div>
+  <ul class="il">
+    <li>Main Entrance → Emergency Department</li>
+    <li>Main Entrance → Blood Bank</li>
+    <li>Main Entrance → ICU</li>
+    <li>Main Entrance → Surgery / Operating Theatre</li>
+    <li>Main Entrance → Maternity Ward</li>
+    <li>Main Entrance → Infection Control</li>
+    <li>Reception → Laboratory · Pharmacy · Outpatient Registration · Radiology</li>
+    <li>Emergency → Blood Bank (internal) · Emergency → ICU (internal transfer)</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Development Phases</div>
+  <div class="phase-list">
+    <div class="phase-item"><div class="phase-num">1</div><div><div class="phase-title">Navigation Data Collection<span class="phase-wks">Weeks 1–3</span></div><div class="phase-desc">Physical walkthrough of HGD. Map all Phase 1 routes. Record landmark descriptions EN + FR.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div><div class="phase-title">Database Schema + Data Entry<span class="phase-wks">Weeks 3–5</span></div><div class="phase-desc">Populate navigation_paths table. JSONB step arrays with landmark fields. Bilingual.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div><div class="phase-title">Embedding Index + Dept Info Sharing<span class="phase-wks">Weeks 5–7</span></div><div class="phase-desc">Build in-memory index shared with AGENT-C. Test resolution accuracy: 100 colloquial queries.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div><div class="phase-title">AGENT-O Integration &amp; Platform Testing<span class="phase-wks">Weeks 7–9</span></div><div class="phase-desc">Test WhatsApp, SMS (~160 chars), USSD (paginated 182-char), mobile card display.</div></div></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Risks &amp; Mitigations</div>
+  <table class="rt"><thead><tr><th>Risk</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th></tr></thead><tbody>
+    <tr><td><strong>Navigation data outdated after hospital layout change</strong></td><td><span class="rs rs-md">High</span></td><td>Medium</td><td>Admin console updates without code deployment. Staleness warning at 365 days. KB sync on navigation.updated.</td></tr>
+    <tr><td><strong>Colloquial name not in informal_names[]</strong></td><td><span class="rs rs-lo">Medium</span></td><td>Medium</td><td>Monthly review of content gap report. Failed nav queries appear in analytics for admin to add informal names.</td></tr>
+  </tbody></table>
+</div></div>
+</div>
+<div id="agent-4" class="agent-card">
+  <div class="agent-header">
+    <div class="agent-badge" style="background:#8B000022;color:#8B0000;border:1px solid #8B000055;">04</div>
+    <div style="flex:1"><div class="agent-name">AGENT-P — Procedure Intelligence Agent</div><div class="agent-tags"><span class="atag" style="background:rgba(0,74,143,.2);color:#82B8F0;border:1px solid rgba(0,74,143,.35);">AGT-04 · :8004</span><span class="atag" style="background:rgba(0,172,193,.1);color:var(--teal);border:1px solid rgba(0,172,193,.22);">FR-PA-01–04 · FR-PB-01–09 · FR-FLT-03–06</span><span class="atag" style="background:rgba(232,98,10,.15);color:#FFAA7A;border:1px solid rgba(232,98,10,.3);">RAG · Stream A + B · Internal Filtering</span><span class="atag" style="background:rgba(251,140,0,.1);color:#FFCC80;border:1px solid rgba(251,140,0,.22);">Non-suppressible disclaimer mandatory</span></div></div>
+  </div>
+  <div class="kpi-row"><div class="kpi-cell"><div class="kpi-lbl">Deployment</div><div class="kpi-val">LangGraph node (FastAPI)</div></div><div class="kpi-cell"><div class="kpi-lbl">Retrieval</div><div class="kpi-val">FAISS + PostgreSQL TSVECTOR combined</div></div><div class="kpi-cell"><div class="kpi-lbl">LLM</div><div class="kpi-val">GPT-4o (grounded generation)</div></div><div class="kpi-cell"><div class="kpi-lbl">No-result</div><div class="kpi-val">Explicit message — no speculation</div></div></div>
+  <div class="agent-body"><div class="ib">
+  <div class="ib-title">Purpose &amp; Role</div>
+  <div class="ip">AGENT-P is the RAG/retrieval engine and internal content governance layer for all procedure queries across both streams. It replaces both the former AGENT-F (content filtering) and the former AGENT-P (pure retrieval). Before executing any retrieval, AGENT-P builds and applies mandatory content filters from the routing state. After filtering, it executes parallel semantic and full-text search and generates a structured, grounded response using GPT-4o.</div>
+  <div class="callout danger"><strong>Clinical safety constraint:</strong> If the maximum similarity score across all retrieved chunks is below 0.40, AGENT-P must return the standard no-result message and set <code>had_result=False</code>. No answer shall be generated from general LLM knowledge. This is a hard architectural constraint.</div>
+</div>
+<div class="ib">
+  <div class="ib-title">Internal Filtering (replaces AGENT-F)</div>
+  <div class="ip">Before any knowledge base query, AGENT-P builds a filter object from the routing context:</div>
+  <ul class="il">
+    <li><strong>stream_target filter:</strong> Only entries where stream_target = current_stream OR 'both'.</li>
+    <li><strong>Role filter (Stream B only):</strong> applicable_roles must contain the JWT user_role. Stream A has <em>no role filter</em> — content is controlled by stream_target only (no authentication available).</li>
+    <li><strong>Status filter:</strong> Only status = 'published'. Draft, pending, and archived entries are always excluded.</li>
+    <li><strong>Language preference:</strong> Entries in the detected language ranked higher; alternate language supplements when &lt; 3 results in preferred language.</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Combined Retrieval Architecture</div>
+  <div class="pipe-row">
+    <div class="pipe-step"><strong>Apply Filters</strong>Build filter dict from state. Stream A: stream_target + status. Stream B: + applicable_roles from JWT.</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><strong>Semantic (FAISS)</strong>text-embedding-3-small query encoding. ANN search with filters. Top-20 with cosine scores.</div>
+    <div class="pipe-arrow">+</div>
+    <div class="pipe-step"><strong>FTS (PostgreSQL)</strong>ts_rank against search_vector TSVECTOR with filters. Normalised rank scores.</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><strong>Weighted Merge</strong>combined = 0.7×semantic + 0.3×fts. Sort desc. Top-5 passed to generation.</div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Structured Response Format (Stream B)</div>
+  <ul class="il">
+    <li><strong>1. AI Disclaimer</strong> — non-suppressible, rendered first by AGENT-O</li>
+    <li><strong>2. Procedure Summary</strong> — from retrieved content</li>
+    <li><strong>3. Step-by-Step Actions</strong> — from steps JSONB, numbered</li>
+    <li><strong>4. Required Approvals</strong> — from approval_required flags per step</li>
+    <li><strong>5. Compliance / Legal Notes</strong> — from compliance_annotations JSONB</li>
+    <li><strong>6. Risk Level</strong> — sets risk_flag if High/Critical for AGENT-O colour badge</li>
+    <li><strong>7. Escalation Pathway</strong> — from linked escalation_pathways if present</li>
+    <li><strong>8. Source Citations</strong> — procedure title + version; tappable links</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Workflow Mode</div>
+  <div class="ip">Activated from the procedure detail screen. AGENT-P restructures the retrieved procedure into sequential step-by-step execution. Each call advances one step, surfacing the step-specific compliance note and approval gate. Step state stored in Redis per user session.</div>
+</div>
+<div class="ib span2">
+  <div class="ib-title">Development Phases</div>
+  <div class="phase-list">
+    <div class="phase-item"><div class="phase-num">1</div><div><div class="phase-title">Internal Filter Function<span class="phase-wks">Weeks 5–7</span></div><div class="phase-desc">Implement build_retrieval_filters() from routing state. Unit test all stream×role combinations. Verify Stream A has no role filter. Security test: filtered results never expose unauthorised content.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div><div class="phase-title">RAG Pipeline Foundation<span class="phase-wks">Weeks 6–9</span></div><div class="phase-desc">FAISS index population via SVC-07. Parallel FTS + semantic retrieval with filters. Weighted merge. Test with 50 procedure entries.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div><div class="phase-title">GPT-4o Prompt Engineering<span class="phase-wks">Weeks 9–11</span></div><div class="phase-desc">Stream A and Stream B prompts. Structured output formatting. Validate grounding in retrieved content. No-result threshold at 0.40.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div><div class="phase-title">Workflow Mode Implementation<span class="phase-wks">Weeks 11–13</span></div><div class="phase-desc">Sequential step logic. Redis step-state per user. Approval gate enforcement. Compliance note surfacing.</div></div></div>
+    <div class="phase-item"><div class="phase-num">5</div><div><div class="phase-title">Performance &amp; Cache Tuning<span class="phase-wks">Weeks 13–16</span></div><div class="phase-desc">Load test 200 concurrent queries. Redis cache keys. p95 latency. LLM fallback to raw text on API failure.</div></div></div>
+  </div>
+</div>
+<div class="ib span2">
+  <div class="ib-title">Risks &amp; Mitigations</div>
+  <table class="rt"><thead><tr><th>Risk</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th></tr></thead><tbody>
+    <tr><td><strong>LLM generates clinical content outside retrieved chunks — hallucination</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Low with RAG</td><td>Prompt strictly constrains generation to retrieved content. 0.40 minimum similarity threshold. "Answer only from the provided procedure content."</td></tr>
+    <tr><td><strong>Stream A user receives staff-only procedure content</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Low</td><td>stream_target filter applied before every retrieval in AGENT-P. Stream A: stream_target=A or both only. Staff content structurally excluded.</td></tr>
+    <tr><td><strong>FTS + semantic merge returns irrelevant top-5 for specialised queries</strong></td><td><span class="rs rs-md">High</span></td><td>Medium</td><td>0.40 threshold rejects low-relevance results. Content gap report flags no-result queries for KB improvement.</td></tr>
+    <tr><td><strong>OpenAI API rate limit or cost overrun under high load</strong></td><td><span class="rs rs-lo">Medium</span></td><td>Medium</td><td>Redis response cache (70% hit rate target). Rate limiting at API Gateway: 20 calls/min/user. Fallback to raw procedure text.</td></tr>
+  </tbody></table>
+</div></div>
+</div>
+<div id="agent-5" class="agent-card">
+  <div class="agent-header">
+    <div class="agent-badge" style="background:#B71C1C22;color:#B71C1C;border:1px solid #B71C1C55;">05</div>
+    <div style="flex:1"><div class="agent-name">AGENT-E — Emergency Agent</div><div class="agent-tags"><span class="atag" style="background:rgba(232,98,10,.15);color:#FFAA7A;border:1px solid rgba(232,98,10,.3);">AGT-05 · :8005 · INTERRUPT PRIORITY</span><span class="atag" style="background:rgba(0,172,193,.1);color:var(--teal);border:1px solid rgba(0,172,193,.22);">FR-E-01 to FR-E-08</span><span class="atag" style="background:rgba(251,140,0,.1);color:#FFCC80;border:1px solid rgba(251,140,0,.22);">Never compressed · ≤ 3s delivery</span><span class="atag" style="background:rgba(229,57,53,.2);color:#FFCDD2;border:1px solid rgba(229,57,53,.35);">Zero LLM calls</span></div></div>
+  </div>
+  <div class="kpi-row"><div class="kpi-cell"><div class="kpi-lbl">Deployment</div><div class="kpi-val">LangGraph interrupt node</div></div><div class="kpi-cell"><div class="kpi-lbl">Content source</div><div class="kpi-val">Pre-composed PostgreSQL (no LLM)</div></div><div class="kpi-cell"><div class="kpi-lbl">Target latency</div><div class="kpi-val">≤ 3s — hard SLA (SRS FR-E-06)</div></div><div class="kpi-cell"><div class="kpi-lbl">Compression</div><div class="kpi-val">Never — emergency exempt from all limits</div></div></div>
+  <div class="agent-body"><div class="ib span2">
+  <div class="ib-title">Purpose &amp; Role — Critical Safety Component</div>
+  <div class="ip">AGENT-E handles all emergency queries with the highest system priority. When AGENT-R sets <code>is_emergency=True</code>, the graph routes immediately to AGENT-E — bypassing AGENT-C, AGENT-N, and AGENT-P entirely. Emergency content is pre-composed and stored in PostgreSQL — zero LLM calls on the emergency path, eliminating both generation latency and hallucination risk.</div>
+  <div class="callout danger"><strong>Hard constraints (SRS FR-E-05, FR-E-06):</strong> (1) Emergency responses are NEVER compressed by AGENT-O on any platform. USSD emergency responses use as many screens as needed. (2) Every emergency activation is immediately logged to SVC-06 with <code>escalation_triggered=True</code>. (3) Delivered within 3 seconds of message receipt on all platforms.</div>
+</div>
+<div class="ib">
+  <div class="ib-title">Stream A Emergency Response</div>
+  <ul class="il">
+    <li>Pre-composed per language (EN/FR). Retrieved from <code>emergency_content</code> table.</li>
+    <li>Contains: (1) immediate safety actions, (2) landmark-based directions to Emergency Dept entrance, (3) hospital emergency contact number.</li>
+    <li>WhatsApp: full content with 🚨 and bold. SMS: ~200 chars (emergency exempt from 160-char limit). USSD: END response — user must act, not navigate menus.</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Stream B Emergency Response</div>
+  <ul class="il">
+    <li>Emergency SOP retrieved by direct pre-defined query — bypasses all role/stream filters (all staff have emergency access).</li>
+    <li>Returns: emergency SOP steps, required approvals, complete escalation chain.</li>
+    <li>Pre-defined query eliminates full RAG pipeline latency to meet the 3-second SLA.</li>
+  </ul>
+</div>
+<div class="ib">
+  <div class="ib-title">Development Phases</div>
+  <div class="phase-list">
+    <div class="phase-item"><div class="phase-num">1</div><div><div class="phase-title">Emergency Content Authoring<span class="phase-wks">Weeks 1–3</span></div><div class="phase-desc">Author Stream A content with clinical team in EN + FR. Verify Emergency Dept directions and contact numbers. Clinical sign-off required.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div><div class="phase-title">Interrupt Node Implementation<span class="phase-wks">Weeks 3–5</span></div><div class="phase-desc">Implement AGENT-E as LangGraph interrupt. Test keyword trigger under all routing conditions. Verify ALL other agents bypassed.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div><div class="phase-title">Emergency SOP Fast-Query (Stream B)<span class="phase-wks">Weeks 5–7</span></div><div class="phase-desc">Pre-defined emergency SOP query bypassing RAG pipeline. Target: content retrieval &lt; 500ms.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div><div class="phase-title">Audit &amp; Delivery Testing<span class="phase-wks">Weeks 7–8</span></div><div class="phase-desc">Audit event fires before response delivery. Load test 200 concurrent users. Measure p99 latency — must be &lt; 3s.</div></div></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Risks &amp; Mitigations</div>
+  <table class="rt"><thead><tr><th>Risk</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th></tr></thead><tbody>
+    <tr><td><strong>Emergency content outdated — wrong contact or direction</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Low</td><td>90-day mandatory review cycle. Admin notified at 60 days. Block publication from Emergency dept admin if overdue.</td></tr>
+    <tr><td><strong>3-second SLA exceeded under load</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Low</td><td>Emergency content table is tiny (≤12 rows). Redis cache emergency content on startup. Target retrieval: &lt; 200ms.</td></tr>
+    <tr><td><strong>False positive — non-emergency matched by keyword</strong></td><td><span class="rs rs-lo">Medium</span></td><td>Low</td><td>Safe over-detection preferred to missed detection. All activations logged for monthly review.</td></tr>
+  </tbody></table>
+</div></div>
+</div>
+<div id="agent-6" class="agent-card">
+  <div class="agent-header">
+    <div class="agent-badge" style="background:#1A3A5A22;color:#1A3A5A;border:1px solid #1A3A5A55;">06</div>
+    <div style="flex:1"><div class="agent-name">AGENT-O — Output Optimisation Agent</div><div class="agent-tags"><span class="atag" style="background:rgba(0,74,143,.2);color:#82B8F0;border:1px solid rgba(0,74,143,.35);">AGT-06 · :8006</span><span class="atag" style="background:rgba(0,172,193,.1);color:var(--teal);border:1px solid rgba(0,172,193,.22);">FR-O-01 to FR-O-06</span><span class="atag" style="background:rgba(67,160,71,.12);color:#A5D6A7;border:1px solid rgba(67,160,71,.25);">Stateless — no LLM · no DB</span><span class="atag" style="background:rgba(232,98,10,.15);color:#FFAA7A;border:1px solid rgba(232,98,10,.3);">Emergency always exempt</span></div></div>
+  </div>
+  <div class="kpi-row"><div class="kpi-cell"><div class="kpi-lbl">Deployment</div><div class="kpi-val">LangGraph terminal node</div></div><div class="kpi-cell"><div class="kpi-lbl">LLM used</div><div class="kpi-val">None — rule-based formatting</div></div><div class="kpi-cell"><div class="kpi-lbl">Platforms</div><div class="kpi-val">5: WhatsApp · SMS · USSD · Mobile · Web</div></div><div class="kpi-cell"><div class="kpi-lbl">Emergency</div><div class="kpi-val">Always exempt from all constraints</div></div></div>
+  <div class="agent-body"><div class="ib">
+  <div class="ib-title">Purpose &amp; Role</div>
+  <div class="ip">AGENT-O is the terminal node of every pipeline path. It adapts content produced by upstream agents to the format and length constraints of the delivery platform. Stateless, no LLM calls, no database queries. If <code>state.is_emergency == True</code>, AGENT-O passes all content through without any modification.</div>
+</div>
+<div class="ib">
+  <div class="ib-title">Platform Format Rules</div>
+  <table class="rt">
+    <thead><tr><th>Platform</th><th>Char Limit</th><th>Formatting Rules</th></tr></thead>
+    <tbody>
+      <tr><td><strong>WhatsApp</strong></td><td>None enforced</td><td>Full structured text. Bold via *asterisks*. Section headers. Line breaks. Emergency exempt.</td></tr>
+      <tr><td><strong>SMS</strong></td><td>~160 chars</td><td>Essential action only. Strip headers, compliance, citations. Core instruction first. "More: call +237 XXX" on truncation.</td></tr>
+      <tr><td><strong>USSD</strong></td><td>~182 chars/screen</td><td>Multi-screen pagination. Screen counter "2/4". Numbered options. No dead ends — always a back/home option. CON or END per screen.</td></tr>
+      <tr><td><strong>Mobile App</strong></td><td>None</td><td>JSON with typed fields for native rendering. risk_flag, escalation_flag, steps[], citations[] as typed arrays.</td></tr>
+      <tr><td><strong>Web Portal</strong></td><td>None</td><td>Same JSON. UI renders collapsible sections, risk badges, clickable citations, Workflow Mode button.</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="ib">
+  <div class="ib-title">Development Phases</div>
+  <div class="phase-list">
+    <div class="phase-item"><div class="phase-num">1</div><div><div class="phase-title">Format Rule Implementation<span class="phase-wks">Weeks 4–6</span></div><div class="phase-desc">Implement all 5 platform formatters as pure Python functions. Unit test with known-length inputs.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div><div class="phase-title">USSD Pagination Engine<span class="phase-wks">Weeks 6–8</span></div><div class="phase-desc">Build and test paginator. Test maximum-length procedure (10 steps). Verify no dead-end screens. Test emergency END flow.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div><div class="phase-title">SMS Compression Algorithm<span class="phase-wks">Weeks 6–8</span></div><div class="phase-desc">Sentence-importance ranking for compression. Manual review of all compressed outputs for clinical accuracy.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div><div class="phase-title">End-to-End Platform Testing<span class="phase-wks">Weeks 9–12</span></div><div class="phase-desc">All platforms with real content. WhatsApp, SMS, USSD functional testing with live credentials.</div></div></div>
+  </div>
+</div>
+<div class="ib">
+  <div class="ib-title">Risks &amp; Mitigations</div>
+  <table class="rt"><thead><tr><th>Risk</th><th>Severity</th><th>Likelihood</th><th>Mitigation</th></tr></thead><tbody>
+    <tr><td><strong>SMS compression removes clinically critical instruction</strong></td><td><span class="rs rs-hi">Critical</span></td><td>Medium</td><td>Step 1 always preserved. Clinical keywords (DO NOT, IMMEDIATELY, CALL) never removed. Manual review of all compression templates.</td></tr>
+    <tr><td><strong>USSD pagination creates dead-end screen</strong></td><td><span class="rs rs-md">High</span></td><td>Low</td><td>Automated test suite verifies every screen has at minimum one navigation option.</td></tr>
+  </tbody></table>
+</div></div>
+</div>
+
+
+<div class="section-divider"></div>
+<div id="services" class="sec-hdr">
+  <div class="sec-ey" style="color:var(--teal);">Platform Business Services</div>
+  <div class="sec-title">SVC-01 through SVC-07 — Independent Microservices</div>
+  <div class="sec-desc">Seven business services operate independently of the AI agent pipeline. The platform functions fully without the AI layer — agents enhance access but are not prerequisites for core governance and content management.</div>
+</div>
+<div style="padding:28px 44px;">
+  <div class="svc-grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-top:0;padding-top:0;border-top:none;">
+    <div class="svc-card"><div class="svc-name">SVC-01 · API Gateway</div><div class="svc-desc">Nginx · TLS termination · JWT validation · RBAC Layer 1 · Rate limiting · :443</div></div>
+    <div class="svc-card"><div class="svc-name">SVC-02 · Auth &amp; RBAC</div><div class="svc-desc">FastAPI · bcrypt(12) · JWT HS256 · Token blacklist (Redis) · Account lockout · :8010</div></div>
+    <div class="svc-card"><div class="svc-name">SVC-03 · Procedure Mgmt</div><div class="svc-desc">FastAPI · CRUD · Two-person approval state machine · Version snapshots · Redis Pub/Sub events · :8011</div></div>
+    <div class="svc-card"><div class="svc-name">SVC-04 · Notifications</div><div class="svc-desc">FastAPI · Expo Push SDK · RabbitMQ consumer · SSE stream · Procedure update alerts · :8012</div></div>
+    <div class="svc-card"><div class="svc-name">SVC-05 · Analytics</div><div class="svc-desc">FastAPI · RabbitMQ consumer · Content gap detection · Recharts dashboard API · Weekly reports · :8013</div></div>
+    <div class="svc-card"><div class="svc-name">SVC-06 · Audit &amp; Compliance</div><div class="svc-desc">FastAPI · PostgreSQL append-only (DB trigger) · HMAC-SHA256 signed · RabbitMQ consumer · 5-year retention · :8014</div></div>
+    <div class="svc-card"><div class="svc-name">SVC-07 · KB Sync</div><div class="svc-desc">FastAPI · Redis Pub/Sub subscriber · OpenAI text-embedding-3-small · FAISS/Pinecone upsert · ≤30s sync SLA · :8015</div></div>
+    <div class="svc-card" style="background:rgba(232,98,10,.05);border-color:rgba(232,98,10,.2);"><div class="svc-name" style="color:var(--hgd-orange);">INF-01 · RabbitMQ</div><div class="svc-desc">Durable queues · Dead-letter exchange · Audit events · Notification triggers · Analytics ingestion</div></div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+<div id="infra" class="sec-hdr">
+  <div class="sec-ey" style="color:var(--teal);">Infrastructure</div>
+  <div class="sec-title">Data &amp; Messaging Infrastructure</div>
+</div>
+<div style="padding:24px 44px 40px;">
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">
+    <div class="ib">
+      <div class="ib-title">PostgreSQL 15 — Key Schemas</div>
+      <ul class="il">
+        <li><strong>aihps_auth</strong> — users, lockout_records, token_blacklist</li>
+        <li><strong>aihps_procedures</strong> — procedure_entries, procedure_versions, navigation_paths, departments, categories, escalation_pathways, procedure_approvals</li>
+        <li><strong>aihps_notifications</strong> — notifications, push_registrations</li>
+        <li><strong>aihps_analytics</strong> — query_events, content_gaps, weekly_reports</li>
+        <li><strong>aihps_audit</strong> — audit_log (append-only, trigger-protected)</li>
+        <li><strong>emergency_content</strong> — pre-composed emergency responses by language (EN/FR)</li>
+      </ul>
+    </div>
+    <div class="ib">
+      <div class="ib-title">Redis 7 — Key Design</div>
+      <ul class="il">
+        <li><code>session:{user_id}:{platform}</code> → Chatbot history · TTL 30min</li>
+        <li><code>ussd:{session_id}</code> → USSD state · TTL 180s</li>
+        <li><code>cache:response:{query_hash}</code> → AI response cache · TTL 1h</li>
+        <li><code>blacklist:token:{jti}</code> → Revoked JWTs</li>
+        <li>Pub/Sub: <code>procedure.published · procedure.updated · procedure.archived · navigation.updated</code></li>
+      </ul>
+    </div>
+    <div class="ib">
+      <div class="ib-title">RabbitMQ 3.12 — Queue Design</div>
+      <ul class="il">
+        <li><strong>audit.events</strong> — Publisher: AI Pipeline + SVC-02/03. Consumer: SVC-06. Durable + persistent. DLQ on failure.</li>
+        <li><strong>notification.triggers</strong> — Publisher: SVC-02/03 + AI Pipeline. Consumer: SVC-04.</li>
+        <li><strong>analytics.events</strong> — Publisher: AI Pipeline. Consumer: SVC-05.</li>
+      </ul>
+    </div>
+    <div class="ib">
+      <div class="ib-title">FAISS → Pinecone — Knowledge Base</div>
+      <ul class="il">
+        <li><strong>Dev/Staging:</strong> FAISS (local Docker volume) · 500-token chunks · 50-token overlap</li>
+        <li><strong>Production:</strong> Pinecone managed service</li>
+        <li><strong>Embedding:</strong> OpenAI text-embedding-3-small · 1536 dimensions</li>
+        <li><strong>Metadata per vector:</strong> entry_id, stream_target, applicable_roles, risk_level, language, chunk_index</li>
+        <li><strong>Sync SLA:</strong> ≤ 30 seconds from procedure.published to index update</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="doc-footer">
+  <div class="doc-footer-logo">AI-<span>HPS</span></div>
+  <div>AI Agent Implementation Plan v1.1 · FUL MARVEL · Institut Universitaire de la Cote (IUC) · SEAS · Hôpital Général de Douala · 2026</div>
+  <div>Based on SRS v3.1 + SDS v1.1</div>
+</div>
+
+</div><!-- /main-content -->
+</div><!-- /layout -->
+</body>
+</html>

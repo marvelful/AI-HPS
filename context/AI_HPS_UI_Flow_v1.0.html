@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI-HPS — UI Flow Illustration</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* HGD Brand */
+  --hgd-blue: #004A8F;
+  --hgd-blue2: #0062B8;
+  --hgd-blue3: #E8F0FA;
+  --hgd-orange: #E8620A;
+  --hgd-orange2: #F47D2C;
+  --hgd-orange3: #FEF0E6;
+  /* Clinical semantic */
+  --clin-red: #C62828;
+  --clin-red-bg: #FFEBEE;
+  --clin-amber: #E65100;
+  --clin-amber-bg: #FFF3E0;
+  --clin-green: #2E7D32;
+  --clin-green-bg: #E8F5E9;
+  /* Surfaces */
+  --white: #FFFFFF;
+  --surf-screen: #F8FAFF;
+  --surf-alt: #F1F5F9;
+  --text-pri: #1A2433;
+  --text-sec: #4A5568;
+  --border: #CBD5E1;
+  --ai-purple: #5B21B6;
+  --ai-purple-bg: #EDE9FE;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0a1628;color:var(--text-pri);overflow-x:auto;}
+
+/* ── PAGE HEADER ── */
+.page-header{
+  background:linear-gradient(135deg,#004A8F 0%,#0062B8 60%,#E8620A 100%);
+  padding:36px 48px 28px;position:relative;overflow:hidden;
+}
+.page-header::before{content:'';position:absolute;top:-80px;right:-80px;
+  width:320px;height:320px;border-radius:50%;background:rgba(255,255,255,0.04);}
+.page-header::after{content:'';position:absolute;bottom:-40px;left:200px;
+  width:180px;height:180px;border-radius:50%;background:rgba(232,98,10,0.12);}
+.header-logo{font-size:36px;font-weight:700;color:#fff;letter-spacing:-1px;}
+.header-logo span{color:#F47D2C;}
+.header-sub{font-size:12px;color:rgba(255,255,255,0.6);margin-top:5px;letter-spacing:.5px;text-transform:uppercase;}
+.header-meta{display:flex;gap:16px;margin-top:20px;flex-wrap:wrap;}
+.meta-pill{background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.2);
+  border-radius:20px;padding:5px 14px;font-size:11px;color:rgba(255,255,255,0.8);}
+
+/* ── LEGEND ── */
+.legend-bar{background:#0a1628;padding:14px 48px;display:flex;align-items:center;
+  gap:28px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.06);}
+.legend-title{font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.65);}
+.legend-dot{width:11px;height:11px;border-radius:3px;}
+.ld-auth{background:#455A64;}
+.ld-stream-a{background:#E8620A;}
+.ld-stream-b{background:#004A8F;}
+.ld-admin{background:#2E7D32;}
+.ld-web{background:#5B21B6;}
+.legend-arr{display:flex;align-items:center;gap:6px;}
+.arr-line{width:28px;height:2px;background:rgba(255,255,255,0.25);position:relative;}
+.arr-line::after{content:'';position:absolute;right:-5px;top:-4px;
+  border:5px solid transparent;border-left-color:rgba(255,255,255,0.25);}
+
+/* ── CANVAS ── */
+.canvas{padding:32px 48px 80px;min-width:1800px;}
+
+/* ── MODULE SECTION ── */
+.module-section{margin-bottom:52px;}
+.module-label{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.module-tag{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  padding:5px 14px;border-radius:4px;color:#fff;}
+.tag-auth{background:#455A64;}
+.tag-a{background:#E8620A;}
+.tag-b{background:#004A8F;}
+.tag-admin{background:#2E7D32;}
+.tag-web{background:#5B21B6;}
+.module-name{font-size:17px;font-weight:600;color:rgba(255,255,255,0.85);}
+.module-desc{font-size:11px;color:rgba(255,255,255,0.32);margin-left:4px;}
+
+/* ── FLOW ROW ── */
+.flow-row{display:flex;align-items:flex-start;gap:0;flex-wrap:nowrap;overflow-x:visible;}
+.sub-flow-row{display:flex;align-items:flex-start;gap:0;flex-wrap:nowrap;
+  margin-left:24px;padding-left:14px;border-left:2px solid rgba(255,255,255,0.07);}
+.sub-label{font-size:9px;font-weight:600;color:rgba(255,255,255,0.35);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;
+  margin-left:24px;padding-left:14px;}
+
+/* ── FLOW ARROW ── */
+.flow-arrow{display:flex;align-items:center;flex-shrink:0;padding:0 4px;margin-top:110px;}
+.flow-arrow svg{width:36px;height:16px;}
+.flow-arrow-lbl{display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:0 4px;margin-top:104px;}
+.flow-arrow-lbl span{font-size:8px;color:rgba(255,255,255,0.3);
+  text-align:center;max-width:56px;line-height:1.3;}
+
+/* ── PHONE FRAME ── */
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:7px;flex-shrink:0;}
+.screen-label{font-size:9px;font-weight:700;color:rgba(255,255,255,0.4);
+  text-align:center;letter-spacing:.4px;text-transform:uppercase;max-width:160px;line-height:1.4;}
+.phone-frame{width:176px;min-height:300px;background:#F8FAFF;border-radius:22px;
+  border:3px solid #1E3A5F;overflow:hidden;position:relative;
+  box-shadow:0 10px 40px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.06);
+  display:flex;flex-direction:column;}
+.phone-frame.wide{width:216px;}
+.web-frame{width:390px;min-height:280px;background:#fff;border-radius:12px;
+  border:2px solid #1E3A5F;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.45);
+  display:flex;flex-direction:column;flex-shrink:0;}
+/* WhatsApp / SMS / USSD frames */
+.channel-frame{width:196px;min-height:280px;border-radius:16px;
+  border:3px solid #1E3A5F;overflow:hidden;
+  box-shadow:0 8px 30px rgba(0,0,0,0.5);display:flex;flex-direction:column;flex-shrink:0;}
+.wa-frame{background:#0D1117;}
+.sms-frame{background:#1a1a2e;}
+.ussd-frame{background:#0D1117;}
+
+/* ── STATUS BAR ── */
+.status-bar{background:var(--hgd-blue);height:20px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 10px;flex-shrink:0;}
+.status-time{font-size:8px;color:rgba(255,255,255,0.85);font-weight:700;}
+.status-icons{display:flex;gap:3px;align-items:center;}
+.status-icons svg{width:9px;height:9px;fill:rgba(255,255,255,0.8);}
+
+/* ── APP BAR ── */
+.app-bar{background:var(--hgd-blue);padding:8px 10px 7px;display:flex;
+  align-items:center;gap:6px;flex-shrink:0;}
+.app-bar-title{font-size:11px;font-weight:700;color:#fff;flex:1;}
+.app-bar-logo{font-size:11px;font-weight:700;color:#fff;}
+.app-bar-logo span{color:#F47D2C;}
+.app-bar-icon{width:16px;height:16px;fill:rgba(255,255,255,0.8);flex-shrink:0;}
+.app-bar-orange{background:var(--hgd-orange);}
+
+/* ── SCREEN BODY ── */
+.screen-body{background:var(--surf-screen);flex:1;overflow:hidden;
+  display:flex;flex-direction:column;gap:0;}
+
+/* ── CARDS ── */
+.s-card{background:#fff;border-radius:8px;padding:8px 10px;margin:5px 8px 0;
+  box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+.s-card:last-child{margin-bottom:5px;}
+.s-card-title{font-size:9px;font-weight:700;color:var(--text-pri);margin-bottom:3px;}
+.s-card-body{font-size:7.5px;color:var(--text-sec);line-height:1.4;}
+.s-card-body strong{color:var(--text-pri);}
+
+/* ── RISK BANNER ── */
+.risk-banner{padding:9px 10px;flex-shrink:0;}
+.risk-banner.red{background:var(--clin-red-bg);}
+.risk-banner.amber{background:var(--clin-amber-bg);}
+.risk-banner.green{background:var(--clin-green-bg);}
+.risk-banner.blue{background:var(--hgd-blue3);}
+.risk-banner-label{font-size:12px;font-weight:700;}
+.risk-banner.red .risk-banner-label{color:var(--clin-red);}
+.risk-banner.amber .risk-banner-label{color:var(--clin-amber);}
+.risk-banner.green .risk-banner-label{color:var(--clin-green);}
+.risk-banner.blue .risk-banner-label{color:var(--hgd-blue);}
+.risk-banner-sub{font-size:7.5px;margin-top:2px;}
+.risk-banner.red .risk-banner-sub{color:var(--clin-red);}
+.risk-banner.amber .risk-banner-sub{color:var(--clin-amber);}
+.risk-banner.green .risk-banner-sub{color:var(--clin-green);}
+.risk-banner.blue .risk-banner-sub{color:var(--hgd-blue);}
+
+/* ── AI DISCLAIMER BADGE ── */
+.ai-badge{background:var(--ai-purple-bg);border-left:3px solid var(--ai-purple);
+  padding:5px 10px;display:flex;gap:5px;align-items:center;flex-shrink:0;}
+.ai-badge span{font-size:7px;color:var(--ai-purple);font-style:italic;line-height:1.4;}
+
+/* ── CHIPS ── */
+.chip-row{display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px;}
+.chip{padding:3px 7px;border-radius:12px;font-size:7px;font-weight:600;}
+.chip-red{background:var(--clin-red-bg);color:var(--clin-red);}
+.chip-amber{background:var(--clin-amber-bg);color:var(--clin-amber);}
+.chip-green{background:var(--clin-green-bg);color:var(--clin-green);}
+.chip-blue{background:var(--hgd-blue3);color:var(--hgd-blue);}
+.chip-orange{background:var(--hgd-orange3);color:var(--hgd-orange);}
+.chip-purple{background:var(--ai-purple-bg);color:var(--ai-purple);}
+.chip-grey{background:#ECEFF1;color:var(--text-sec);}
+
+/* ── BUTTONS ── */
+.s-btn{display:block;text-align:center;padding:7px 10px;border-radius:6px;
+  font-size:8px;font-weight:700;margin:4px 8px;letter-spacing:.3px;}
+.btn-blue{background:var(--hgd-blue);color:#fff;}
+.btn-orange{background:var(--hgd-orange);color:#fff;}
+.btn-red{background:var(--clin-red);color:#fff;}
+.btn-green{background:var(--clin-green);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid var(--text-sec);color:var(--text-sec);}
+.btn-outline-blue{background:transparent;border:1.5px solid var(--hgd-blue);color:var(--hgd-blue);}
+
+/* ── FORM FIELDS ── */
+.s-field{background:#fff;border:1.5px solid #CBD5E1;border-radius:6px;
+  padding:6px 8px;margin:4px 8px;font-size:8px;color:var(--text-sec);}
+.s-field-label{font-size:7px;color:var(--text-sec);margin-bottom:2px;}
+.s-field-value{font-size:9px;color:var(--text-pri);font-weight:600;}
+
+/* ── NAV BAR ── */
+.nav-bar{background:#fff;border-top:1px solid #E0E0E0;display:flex;align-items:center;
+  height:40px;padding:0 4px;flex-shrink:0;box-shadow:0 -2px 8px rgba(0,0,0,0.05);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;}
+.nav-item svg{width:14px;height:14px;fill:var(--text-sec);}
+.nav-item.active svg{fill:var(--hgd-blue);}
+.nav-item-label{font-size:6.5px;color:var(--text-sec);}
+.nav-item.active .nav-item-label{color:var(--hgd-blue);font-weight:700;}
+.nav-active-bar{width:20px;height:2px;background:var(--hgd-blue);border-radius:1px;margin-bottom:1px;}
+.nav-badge{background:var(--hgd-orange);color:#fff;font-size:6px;font-weight:700;
+  padding:1px 4px;border-radius:8px;margin-left:-4px;margin-top:-12px;}
+
+/* ── STEP INDICATOR ── */
+.step-indicator{display:flex;align-items:center;justify-content:space-between;padding:5px 10px 2px;}
+.step-pill{background:var(--hgd-blue);color:#fff;font-size:7.5px;font-weight:700;
+  padding:2px 8px;border-radius:10px;}
+.step-progress{height:3px;background:#CBD5E1;margin:0 8px 4px;border-radius:2px;overflow:hidden;}
+.step-fill{height:100%;background:var(--hgd-blue);border-radius:2px;}
+.step-fill.orange{background:var(--hgd-orange);}
+
+/* ── PROCEDURE RESULT SECTIONS ── */
+.proc-section{background:#fff;margin:4px 8px 0;border-radius:7px;padding:7px 9px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.proc-section-title{font-size:7.5px;font-weight:700;color:var(--text-sec);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.proc-step{display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;}
+.proc-step-num{width:14px;height:14px;border-radius:50%;background:var(--hgd-orange);
+  color:#fff;font-size:7px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;margin-top:1px;}
+.proc-step-text{font-size:7.5px;color:var(--text-pri);line-height:1.4;flex:1;}
+.proc-approval{background:var(--hgd-orange3);border-left:2px solid var(--hgd-orange);
+  padding:4px 7px;margin:3px 0;border-radius:3px;font-size:7px;color:var(--hgd-orange);font-weight:600;}
+.escalation-card{background:var(--clin-red-bg);border-left:3px solid var(--clin-red);
+  padding:5px 8px;margin:4px 8px 0;border-radius:5px;}
+.escalation-label{font-size:7.5px;font-weight:700;color:var(--clin-red);}
+.escalation-text{font-size:7px;color:var(--clin-red);margin-top:2px;line-height:1.3;}
+
+/* ── CHATBOT ── */
+.chat-body{background:var(--surf-screen);flex:1;padding:6px 0;overflow:hidden;
+  display:flex;flex-direction:column;gap:5px;}
+.chat-msg-user{background:var(--hgd-blue);color:#fff;font-size:7.5px;border-radius:14px 14px 4px 14px;
+  padding:6px 9px;margin:0 8px 0 28px;line-height:1.4;}
+.chat-msg-ai{background:#fff;border-left:3px solid var(--hgd-orange);font-size:7.5px;
+  color:var(--text-pri);border-radius:4px 14px 14px 14px;padding:6px 9px;
+  margin:0 28px 0 8px;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+.chat-typing{display:flex;gap:4px;align-items:center;padding:5px 16px;}
+.typing-dot{width:5px;height:5px;border-radius:50%;background:var(--hgd-orange);
+  opacity:.4;}
+.chat-input-bar{background:#fff;border-top:1px solid var(--border);padding:5px 8px;
+  display:flex;gap:5px;align-items:center;flex-shrink:0;}
+.chat-input{flex:1;background:var(--surf-alt);border-radius:16px;padding:5px 8px;
+  font-size:7.5px;color:var(--text-sec);}
+.chat-send-btn{width:28px;height:28px;border-radius:50%;background:var(--hgd-orange);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.chat-send-btn svg{width:13px;height:13px;fill:#fff;}
+
+/* ── SEARCH BAR ── */
+.search-bar{display:flex;align-items:center;gap:5px;background:#fff;
+  border:1.5px solid var(--border);border-radius:20px;padding:5px 10px;margin:6px 8px;}
+.search-bar svg{width:11px;height:11px;fill:var(--text-sec);flex-shrink:0;}
+.search-bar span{font-size:8px;color:var(--text-sec);}
+
+/* ── SEARCH RESULTS ── */
+.result-item{background:#fff;border-radius:7px;margin:4px 8px 0;padding:7px 9px;
+  display:flex;align-items:center;gap:7px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.result-risk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.rd-red{background:var(--clin-red);}
+.rd-amber{background:var(--clin-amber);}
+.rd-green{background:var(--clin-green);}
+.result-text{flex:1;}
+.result-title{font-size:8px;font-weight:700;color:var(--text-pri);}
+.result-meta{font-size:7px;color:var(--text-sec);margin-top:1px;}
+
+/* ── BROWSE / CATEGORY ── */
+.dept-chip{background:var(--hgd-blue3);border:1px solid var(--hgd-blue2);color:var(--hgd-blue);
+  border-radius:14px;padding:4px 9px;font-size:8px;font-weight:600;margin:3px;
+  display:inline-block;}
+.dept-chip.active{background:var(--hgd-blue);color:#fff;border-color:var(--hgd-blue);}
+.cat-card{background:#fff;border-radius:7px;margin:4px 8px 0;padding:8px 9px;
+  display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.cat-icon{width:26px;height:26px;border-radius:7px;background:var(--hgd-blue3);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cat-icon svg{width:14px;height:14px;fill:var(--hgd-blue);}
+.cat-icon.orange{background:var(--hgd-orange3);}
+.cat-icon.orange svg{fill:var(--hgd-orange);}
+.cat-text{flex:1;}
+.cat-title{font-size:8.5px;font-weight:700;color:var(--text-pri);}
+.cat-count{font-size:7px;color:var(--text-sec);margin-top:1px;}
+.cat-badge{background:var(--hgd-orange3);color:var(--hgd-orange);font-size:7px;
+  font-weight:700;padding:1px 6px;border-radius:8px;}
+
+/* ── WORKFLOW MODE ── */
+.wf-step-card{background:#fff;margin:5px 8px;border-radius:9px;padding:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.wf-step-num{width:26px;height:26px;border-radius:50%;background:var(--hgd-orange);
+  color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;margin-bottom:7px;}
+.wf-step-text{font-size:9px;color:var(--text-pri);font-weight:600;line-height:1.4;margin-bottom:4px;}
+.wf-compliance{background:var(--hgd-blue3);border-radius:5px;padding:4px 7px;
+  font-size:7px;color:var(--hgd-blue);margin-top:4px;}
+.wf-approval-gate{background:var(--hgd-orange3);border:1px solid var(--hgd-orange);
+  border-radius:5px;padding:5px 7px;margin-top:5px;display:flex;gap:5px;align-items:center;}
+.wf-lock-icon{font-size:10px;}
+.wf-approval-text{font-size:7px;color:var(--hgd-orange);font-weight:600;}
+.wf-nav{display:flex;gap:5px;padding:5px 8px;flex-shrink:0;}
+.wf-nav-prev{flex:1;background:transparent;border:1.5px solid var(--border);
+  border-radius:6px;padding:6px;text-align:center;font-size:8px;color:var(--text-sec);font-weight:600;}
+.wf-nav-next{flex:2;background:var(--hgd-blue);border-radius:6px;padding:6px;
+  text-align:center;font-size:8px;color:#fff;font-weight:700;}
+.wf-nav-next.disabled{background:#CBD5E1;color:var(--text-sec);}
+
+/* ── ADMIN ── */
+.status-badge{display:inline-block;font-size:7px;font-weight:700;padding:2px 6px;border-radius:10px;}
+.sb-draft{background:#F1F5F9;color:var(--text-sec);}
+.sb-pending{background:var(--clin-amber-bg);color:var(--clin-amber);}
+.sb-published{background:var(--clin-green-bg);color:var(--clin-green);}
+.sb-archived{background:#ECEFF1;color:#78909C;}
+.proc-list-item{background:#fff;border-radius:7px;margin:4px 8px 0;padding:7px 9px;
+  display:flex;align-items:center;gap:7px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+.approval-step{display:flex;gap:5px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--surf-alt);}
+.approval-avatar{width:20px;height:20px;border-radius:50%;background:var(--hgd-blue3);
+  display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:var(--hgd-blue);}
+.approval-info{flex:1;}
+.approval-name{font-size:8px;font-weight:700;color:var(--text-pri);}
+.approval-role{font-size:7px;color:var(--text-sec);}
+.approval-status{font-size:7px;font-weight:700;}
+.as-done{color:var(--clin-green);}
+.as-waiting{color:var(--clin-amber);}
+
+/* ── NOTIFICATION ── */
+.notif-item{background:#fff;border-radius:7px;margin:4px 8px 0;padding:7px 9px;
+  display:flex;gap:7px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+.notif-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.nd-blue{background:var(--hgd-blue);}
+.nd-orange{background:var(--hgd-orange);}
+.nd-red{background:var(--clin-red);}
+.nd-green{background:var(--clin-green);}
+.notif-text{flex:1;}
+.notif-title{font-size:8px;font-weight:700;color:var(--text-pri);}
+.notif-body{font-size:7px;color:var(--text-sec);margin-top:1px;line-height:1.3;}
+.notif-time{font-size:7px;color:var(--text-sec);margin-top:2px;}
+
+/* ── AUDIT LOG ── */
+.audit-row{display:flex;gap:6px;align-items:flex-start;padding:5px 0;
+  border-bottom:1px solid var(--surf-alt);}
+.audit-icon{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;}
+.audit-icon svg{width:10px;height:10px;}
+.ai-blue{background:var(--hgd-blue3);}
+.ai-orange{background:var(--hgd-orange3);}
+.ai-red{background:var(--clin-red-bg);}
+.ai-green{background:var(--clin-green-bg);}
+.audit-content{flex:1;}
+.audit-type{font-size:7.5px;font-weight:700;color:var(--text-pri);}
+.audit-user{font-size:7px;color:var(--text-sec);}
+.audit-time{font-size:7px;color:var(--text-sec);}
+.audit-hmac{font-size:6.5px;color:var(--clin-green);font-family:monospace;margin-top:1px;}
+
+/* ── WEB PORTAL ── */
+.web-topbar{background:var(--hgd-blue);padding:8px 14px;display:flex;align-items:center;gap:8px;}
+.web-topbar-logo{font-size:11px;font-weight:700;color:#fff;}
+.web-topbar-logo span{color:#F47D2C;}
+.web-topbar-right{font-size:9px;color:rgba(255,255,255,0.6);flex:1;text-align:right;}
+.web-body{display:flex;flex:1;overflow:hidden;}
+.web-sidebar{width:68px;background:var(--surf-alt);border-right:1px solid var(--border);padding:6px 0;flex-shrink:0;}
+.web-sidebar-item{padding:7px 0;display:flex;flex-direction:column;align-items:center;
+  gap:2px;cursor:pointer;border-left:3px solid transparent;}
+.web-sidebar-item.active{border-left-color:var(--hgd-blue);background:var(--hgd-blue3);}
+.web-sidebar-item svg{width:14px;height:14px;fill:var(--text-sec);}
+.web-sidebar-item.active svg{fill:var(--hgd-blue);}
+.web-sidebar-label{font-size:6px;color:var(--text-sec);text-align:center;line-height:1.3;}
+.web-sidebar-item.active .web-sidebar-label{color:var(--hgd-blue);font-weight:700;}
+.web-main{flex:1;padding:10px 12px;background:var(--surf-screen);overflow:hidden;}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;}
+.kpi-card{background:#fff;border-radius:7px;padding:7px 9px;border-left:3px solid var(--hgd-blue);
+  box-shadow:0 1px 4px rgba(0,0,0,0.05);}
+.kpi-card.orange{border-left-color:var(--hgd-orange);}
+.kpi-card.red{border-left-color:var(--clin-red);}
+.kpi-card.green{border-left-color:var(--clin-green);}
+.kpi-title{font-size:7px;color:var(--text-sec);font-weight:600;line-height:1.3;}
+.kpi-value{font-size:18px;font-weight:700;color:var(--text-pri);margin:2px 0 1px;}
+.kpi-card.red .kpi-value{color:var(--clin-red);}
+.kpi-card.orange .kpi-value{color:var(--hgd-orange);}
+.kpi-trend{font-size:7px;font-weight:600;}
+.trend-up{color:var(--clin-green);}
+.trend-dn{color:var(--clin-red);}
+
+/* ── STREAM A CHANNELS ── */
+.wa-header{background:#075E54;padding:8px 10px;display:flex;align-items:center;gap:7px;}
+.wa-avatar{width:22px;height:22px;border-radius:50%;background:#25D366;
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;}
+.wa-name{font-size:9px;font-weight:700;color:#fff;}
+.wa-online{font-size:7px;color:rgba(255,255,255,0.6);}
+.wa-body{background:#ECE5DD;flex:1;padding:7px 6px;display:flex;flex-direction:column;gap:5px;}
+.wa-bubble-in{background:#fff;border-radius:0 10px 10px 10px;padding:6px 8px;
+  max-width:85%;box-shadow:0 1px 2px rgba(0,0,0,0.12);}
+.wa-bubble-out{background:#DCF8C6;border-radius:10px 0 10px 10px;padding:6px 8px;
+  max-width:85%;align-self:flex-end;box-shadow:0 1px 2px rgba(0,0,0,0.12);}
+.wa-text{font-size:8px;color:#111;line-height:1.5;}
+.wa-text b{font-weight:700;}
+.wa-time{font-size:6.5px;color:rgba(0,0,0,0.4);text-align:right;margin-top:2px;}
+.wa-emerg{background:#FFEBEE;border-radius:0 10px 10px 10px;padding:7px 8px;
+  border-left:3px solid #C62828;max-width:90%;}
+.wa-emerg-title{font-size:8.5px;font-weight:700;color:#C62828;margin-bottom:3px;}
+.wa-emerg-text{font-size:7.5px;color:#C62828;line-height:1.5;}
+.wa-disclaimer{font-size:7px;color:rgba(0,0,0,0.4);font-style:italic;margin-top:3px;}
+.wa-input-bar{background:#f0f0f0;padding:5px 8px;display:flex;align-items:center;
+  gap:6px;flex-shrink:0;}
+.wa-input-field{flex:1;background:#fff;border-radius:20px;padding:5px 9px;
+  font-size:8px;color:#666;}
+.wa-send{width:26px;height:26px;border-radius:50%;background:#25D366;
+  display:flex;align-items:center;justify-content:center;}
+.wa-send svg{width:12px;height:12px;fill:#fff;}
+
+.sms-body{background:#1a1a2e;flex:1;padding:8px 8px;display:flex;flex-direction:column;gap:6px;}
+.sms-bubble{background:#2a2a4e;border-radius:14px;padding:8px 10px;font-size:8px;
+  color:#e0e0e0;line-height:1.5;border:1px solid #3a3a6e;}
+.sms-bubble.out{background:var(--hgd-blue);color:#fff;border-color:var(--hgd-blue);
+  align-self:flex-end;max-width:85%;}
+.sms-time{font-size:6.5px;color:rgba(255,255,255,0.3);text-align:right;margin-top:2px;}
+.sms-header{background:#2a2a4e;padding:8px 10px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid #3a3a6e;}
+.sms-from{font-size:9px;font-weight:700;color:#fff;}
+.sms-info{font-size:7px;color:rgba(255,255,255,0.4);}
+
+.ussd-body{background:#0D1117;flex:1;padding:10px;font-family:'Courier New',monospace;}
+.ussd-screen{background:#0a1628;border:1px solid #1E3A5F;border-radius:5px;padding:9px 10px;
+  white-space:pre;font-size:9px;line-height:1.7;color:#00ff41;}
+.ussd-title{font-size:8px;color:rgba(0,255,65,0.5);margin-bottom:6px;}
+.ussd-header{background:#151C26;padding:6px 10px;display:flex;align-items:center;
+  gap:6px;border-bottom:1px solid #1E3A5F;}
+.ussd-network{font-size:8px;color:rgba(255,255,255,0.5);}
+.ussd-shortcode{font-size:9px;font-weight:700;color:#00ff41;}
+.ussd-input{background:#0a1628;border-top:1px solid #1E3A5F;padding:6px 10px;
+  display:flex;gap:6px;align-items:center;margin-top:auto;flex-shrink:0;}
+.ussd-key{font-size:8px;color:rgba(0,255,65,0.6);font-family:'Courier New',monospace;}
+.ussd-send{background:var(--hgd-orange);color:#fff;font-size:7.5px;font-weight:700;
+  padding:3px 8px;border-radius:4px;}
+
+/* ── MISC ── */
+.section-sep{height:1px;background:rgba(255,255,255,0.05);margin:32px 0 24px;}
+.shimmer{background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
+  background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;
+  height:11px;margin:4px 8px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.screen-section-hdr{font-size:7.5px;font-weight:700;color:var(--text-sec);
+  padding:5px 10px 2px;text-transform:uppercase;letter-spacing:.5px;}
+.scroll-fade{height:14px;background:linear-gradient(to bottom,transparent,rgba(248,250,255,.95));
+  flex-shrink:0;}
+@media print{body{background:#fff;}.canvas{padding:16px;}.flow-row{flex-wrap:wrap;}}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="header-logo">AI-<span>HPS</span></div>
+  <div class="header-sub">AI Hospital Procedural Intelligence System — Complete UI Flow</div>
+  <div class="header-meta">
+    <div class="meta-pill">Version 1.0 · Based on SRS v3.0 + SDS v1.0 + UI/UX Spec v1.0</div>
+    <div class="meta-pill">Platforms: Mobile App · Web Portal · WhatsApp · SMS · USSD</div>
+    <div class="meta-pill">Target: Hôpital Général de Douala, Cameroon</div>
+    <div class="meta-pill">FUL MARVEL · IUC · SEAS · 2026</div>
+  </div>
+</div>
+
+<div class="legend-bar">
+  <span class="legend-title">Legend</span>
+  <div class="legend-item"><div class="legend-dot ld-auth"></div>Auth & Cross-Cutting</div>
+  <div class="legend-item"><div class="legend-dot ld-stream-a"></div>Stream A — Public (WhatsApp/SMS/USSD)</div>
+  <div class="legend-item"><div class="legend-dot ld-stream-b"></div>Stream B — Staff (Mobile App / Web)</div>
+  <div class="legend-item"><div class="legend-dot ld-admin"></div>Admin Functions</div>
+  <div class="legend-item"><div class="legend-dot ld-web"></div>Web Portal</div>
+  <div class="legend-arr"><div class="arr-line"></div><span style="font-size:11px;color:rgba(255,255,255,0.4);">Screen Flow</span></div>
+</div>
+
+<div class="canvas">
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-auth">AUTH</div>
+      <div class="module-name">Authentication & Home Dashboard</div>
+      <div class="module-desc">Entry point for all users · JWT session management</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">App Launch / Splash</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="screen-body" style="align-items:center;justify-content:center;background:var(--hgd-blue);">
+  <div style="font-size:30px;font-weight:700;color:#fff;text-align:center;letter-spacing:-1px;">
+    AI-<span style="color:#F47D2C;">HPS</span></div>
+  <div style="font-size:8px;color:rgba(255,255,255,0.55);margin-top:5px;">Hospital Procedural Intelligence</div>
+  <div style="margin-top:26px;display:flex;gap:5px;align-items:center;">
+    <div style="width:6px;height:6px;border-radius:50%;background:#F47D2C;"></div>
+    <span style="font-size:8px;color:rgba(255,255,255,0.45);">Loading platform...</span>
+  </div>
+  <div style="margin-top:6px;font-size:7.5px;color:rgba(255,255,255,0.3);">Hôpital Général de Douala</div>
+</div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>JWT check</span></div><div class="phone-wrap">
+    <div class="screen-label">Staff Login</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-logo">AI-<span>HPS</span></span></div>
+<div class="screen-body" style="justify-content:center;padding:10px 0;">
+  <div style="text-align:center;padding:10px 0 14px;">
+    <div style="font-size:12px;font-weight:700;color:var(--hgd-blue);">Welcome Back</div>
+    <div style="font-size:8px;color:var(--text-sec);margin-top:3px;">Sign in to continue</div>
+  </div>
+  <div class="s-field"><div class="s-field-label">Email</div><div class="s-field-value">staff@hgd.cm</div></div>
+  <div class="s-field"><div class="s-field-label">Password</div><div class="s-field-value">••••••••</div></div>
+  <div class="s-btn btn-blue" style="margin-top:8px;">Sign In</div>
+  <div style="text-align:center;font-size:7.5px;color:var(--text-sec);margin-top:8px;">Forgot password?</div>
+  <div style="background:var(--clin-red-bg);margin:6px 8px;border-radius:6px;padding:5px 8px;font-size:7.5px;color:var(--clin-red);display:none;">
+    Incorrect credentials. 3 attempts remaining.</div>
+</div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Auth success</span></div><div class="phone-wrap">
+    <div class="screen-label">Home Dashboard</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar">
+  <span class="app-bar-title">Good morning, Dr. Ayuk</span>
+  <svg class="app-bar-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+</div>
+<div class="screen-body">
+  <div class="risk-banner blue">
+    <div class="risk-banner-label" style="font-size:9px;">📋 3 Procedures Updated Today</div>
+    <div class="risk-banner-sub">ICU Sepsis Protocol · Blood Transfusion SOP · +1 more</div>
+  </div>
+  <div class="screen-section-hdr">Quick Access</div>
+  <div class="chip-row">
+    <div class="chip chip-blue">Emergency</div>
+    <div class="chip chip-blue">Blood Bank</div>
+    <div class="chip chip-blue">ICU</div>
+    <div class="chip chip-orange">Recent</div>
+  </div>
+  <div class="screen-section-hdr">Recent Procedures</div>
+  <div class="result-item">
+    <div class="result-risk-dot rd-red"></div>
+    <div class="result-text"><div class="result-title">Haemorrhage Control Protocol</div>
+    <div class="result-meta">Emergency · Updated 2h ago</div></div>
+  </div>
+  <div class="result-item">
+    <div class="result-risk-dot rd-amber"></div>
+    <div class="result-text"><div class="result-title">ICU Sepsis Management</div>
+    <div class="result-meta">ICU · Updated today</div></div>
+  </div>
+  <div class="shimmer" style="margin-top:4px;"></div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Notification bell</span></div><div class="phone-wrap">
+    <div class="screen-label">Notifications</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Notifications</span></div>
+<div class="screen-body">
+  <div class="notif-item">
+    <div class="notif-dot nd-blue"></div>
+    <div class="notif-text">
+      <div class="notif-title">Procedure Updated</div>
+      <div class="notif-body">ICU Sepsis Management Protocol has been updated to v3. Review before next clinical use.</div>
+      <div class="notif-time">Today · 08:32</div>
+    </div>
+  </div>
+  <div class="notif-item">
+    <div class="notif-dot nd-orange"></div>
+    <div class="notif-text">
+      <div class="notif-title">Approval Requested</div>
+      <div class="notif-body">ICU Ventilator Weaning Protocol requires your approval before publication.</div>
+      <div class="notif-time">Today · 07:15</div>
+    </div>
+  </div>
+  <div class="notif-item">
+    <div class="notif-dot nd-red"></div>
+    <div class="notif-text">
+      <div class="notif-title">Emergency Activated</div>
+      <div class="notif-body">Stream A emergency query received via WhatsApp. Patient directed to Emergency Dept.</div>
+      <div class="notif-time">Today · 09:44</div>
+    </div>
+  </div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-b">STREAM B — BROWSE</div>
+      <div class="module-name">Procedure Browse — Category Navigation</div>
+      <div class="module-desc">No AI · Direct database retrieval · RBAC-filtered</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">Procedure Library</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Procedure Library</span></div>
+<div class="screen-body">
+  <div class="screen-section-hdr">Departments</div>
+  <div class="chip-row">
+    <div class="chip chip-blue">All</div>
+    <div class="chip" style="background:var(--hgd-blue);color:#fff;">Emergency</div>
+    <div class="chip chip-blue">ICU</div>
+    <div class="chip chip-blue">Blood Bank</div>
+  </div>
+  <div class="screen-section-hdr">Categories</div>
+  <div class="cat-card"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+    <div class="cat-text"><div class="cat-title">Emergency Protocols</div><div class="cat-count">14 procedures</div></div>
+    <div class="cat-badge">Critical</div></div>
+  <div class="cat-card"><div class="cat-icon orange"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg></div>
+    <div class="cat-text"><div class="cat-title">ICU Care SOPs</div><div class="cat-count">9 procedures</div></div>
+    <div class="cat-badge" style="background:var(--clin-amber-bg);color:var(--clin-amber);">High</div></div>
+  <div class="cat-card"><div class="cat-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm-1 17.93V18a1 1 0 0 1 2 0v1.93A8.001 8.001 0 0 1 4.07 13H6a1 1 0 0 1 0 2H4.07A8.001 8.001 0 0 1 12 4.07V6a1 1 0 0 1-2 0V4.07A8.001 8.001 0 0 1 19.93 11H18a1 1 0 0 1 0-2h1.93A8.001 8.001 0 0 1 11 19.93z"/></svg></div>
+    <div class="cat-text"><div class="cat-title">Blood Bank</div><div class="cat-count">6 procedures</div></div></div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Select category</span></div><div class="phone-wrap">
+    <div class="screen-label">Procedure Detail (Static)</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Blood Transfusion — Incompatibility</span></div>
+<div class="screen-body">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;">
+    <div style="font-size:9px;font-weight:700;color:var(--text-pri);">BB-EMERG-003 · v2.1</div>
+    <div class="chip chip-red" style="font-size:7px;">⚠ CRITICAL</div>
+  </div>
+  <div class="proc-section">
+    <div class="proc-section-title">Summary</div>
+    <div style="font-size:8px;color:var(--text-pri);line-height:1.5;">Protocol for managing patients requiring urgent blood transfusion when no compatible blood type is available in the Blood Bank.</div>
+  </div>
+  <div class="proc-section">
+    <div class="proc-section-title">Steps</div>
+    <div class="proc-step"><div class="proc-step-num">1</div><div class="proc-step-text">Notify Blood Bank Director immediately (Ext. 204)</div></div>
+    <div class="proc-step"><div class="proc-step-num">2</div><div class="proc-step-text">Request O-negative emergency stock</div></div>
+    <div class="proc-approval">🔒 Senior Physician approval required</div>
+  </div>
+  <div class="escalation-card">
+    <div class="escalation-label">⬆ ESCALATION REQUIRED</div>
+    <div class="escalation-text">CMO on-call → Blood Bank Director</div>
+  </div>
+</div>
+<div class="action-bar" style="background:var(--surf-screen);border-top:1px solid var(--border);padding:5px 8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+  <div class="s-btn btn-blue" style="margin:0;">Step through this procedure →</div>
+</div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tap "Step through"</span></div><div class="phone-wrap">
+    <div class="screen-label">Workflow Mode — Step</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Workflow Mode</span></div>
+<div class="screen-body">
+  <div class="step-indicator">
+    <div class="step-pill">Step 2 / 5</div>
+    <div style="font-size:7.5px;color:var(--text-sec);">BB-EMERG-003</div>
+  </div>
+  <div class="step-progress"><div class="step-fill" style="width:40%;"></div></div>
+  <div class="wf-step-card">
+    <div class="wf-step-num">2</div>
+    <div class="wf-step-text">Request O-negative emergency stock from Blood Bank and confirm availability with the on-duty technician.</div>
+    <div class="wf-compliance">📋 WHO Guideline WB-2019-§4.3: Document clinical indication before release.</div>
+    <div class="wf-approval-gate">
+      <div class="wf-lock-icon">🔒</div>
+      <div class="wf-approval-text">APPROVAL REQUIRED: Senior Physician + Blood Bank Director must authorise before proceeding to Step 3.</div>
+    </div>
+  </div>
+</div>
+<div class="wf-nav">
+  <div class="wf-nav-prev">← Previous</div>
+  <div class="wf-nav-next disabled">Confirm Approval → Next</div>
+</div>
+    </div>
+  </div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-b">STREAM B — SEARCH</div>
+      <div class="module-name">Search Bar — Combined FTS + Semantic</div>
+      <div class="module-desc">PostgreSQL TSVECTOR + FAISS · AGENT-F filtered · AGENT-P ranked</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">Search Bar</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Search Procedures</span></div>
+<div class="screen-body">
+  <div class="search-bar">
+    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <span>incompatible blood transfusion</span>
+  </div>
+  <div style="padding:3px 10px;font-size:7px;color:var(--text-sec);">4 results · Semantic + FTS combined</div>
+  <div class="result-item">
+    <div class="result-risk-dot rd-red"></div>
+    <div class="result-text">
+      <div class="result-title">Emergency Blood Transfusion — Incompatibility Protocol</div>
+      <div class="result-meta">Blood Bank · Critical · Score 0.94</div>
+    </div>
+  </div>
+  <div class="result-item">
+    <div class="result-risk-dot rd-amber"></div>
+    <div class="result-text">
+      <div class="result-title">Transfusion Reaction Management</div>
+      <div class="result-meta">Blood Bank · High · Score 0.81</div>
+    </div>
+  </div>
+  <div class="result-item">
+    <div class="result-risk-dot rd-green"></div>
+    <div class="result-text">
+      <div class="result-title">Pre-Transfusion Compatibility Testing</div>
+      <div class="result-meta">Blood Bank · Medium · Score 0.73</div>
+    </div>
+  </div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tap result</span></div><div class="phone-wrap">
+    <div class="screen-label">Procedure Detail</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Blood Transfusion — Incompatibility</span></div>
+<div class="screen-body">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;">
+    <div style="font-size:9px;font-weight:700;color:var(--text-pri);">BB-EMERG-003 · v2.1</div>
+    <div class="chip chip-red" style="font-size:7px;">⚠ CRITICAL</div>
+  </div>
+  <div class="proc-section">
+    <div class="proc-section-title">Summary</div>
+    <div style="font-size:8px;color:var(--text-pri);line-height:1.5;">Protocol for managing patients requiring urgent blood transfusion when no compatible blood type is available in the Blood Bank.</div>
+  </div>
+  <div class="proc-section">
+    <div class="proc-section-title">Steps</div>
+    <div class="proc-step"><div class="proc-step-num">1</div><div class="proc-step-text">Notify Blood Bank Director immediately (Ext. 204)</div></div>
+    <div class="proc-step"><div class="proc-step-num">2</div><div class="proc-step-text">Request O-negative emergency stock</div></div>
+    <div class="proc-approval">🔒 Senior Physician approval required</div>
+  </div>
+  <div class="escalation-card">
+    <div class="escalation-label">⬆ ESCALATION REQUIRED</div>
+    <div class="escalation-text">CMO on-call → Blood Bank Director</div>
+  </div>
+</div>
+<div class="action-bar" style="background:var(--surf-screen);border-top:1px solid var(--border);padding:5px 8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+  <div class="s-btn btn-blue" style="margin:0;">Step through this procedure →</div>
+</div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Step through</span></div><div class="phone-wrap">
+    <div class="screen-label">Workflow Mode</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Workflow Mode</span></div>
+<div class="screen-body">
+  <div class="step-indicator">
+    <div class="step-pill">Step 2 / 5</div>
+    <div style="font-size:7.5px;color:var(--text-sec);">BB-EMERG-003</div>
+  </div>
+  <div class="step-progress"><div class="step-fill" style="width:40%;"></div></div>
+  <div class="wf-step-card">
+    <div class="wf-step-num">2</div>
+    <div class="wf-step-text">Request O-negative emergency stock from Blood Bank and confirm availability with the on-duty technician.</div>
+    <div class="wf-compliance">📋 WHO Guideline WB-2019-§4.3: Document clinical indication before release.</div>
+    <div class="wf-approval-gate">
+      <div class="wf-lock-icon">🔒</div>
+      <div class="wf-approval-text">APPROVAL REQUIRED: Senior Physician + Blood Bank Director must authorise before proceeding to Step 3.</div>
+    </div>
+  </div>
+</div>
+<div class="wf-nav">
+  <div class="wf-nav-prev">← Previous</div>
+  <div class="wf-nav-next disabled">Confirm Approval → Next</div>
+</div>
+    </div>
+  </div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-b">STREAM B — AI CHATBOT</div>
+      <div class="module-name">AI Chatbot — AGENT-C → AGENT-F → AGENT-P → AGENT-O</div>
+      <div class="module-desc">Multi-turn · Redis session persistence · RAG-grounded · Mandatory disclaimer</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">AI Assistant Input</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-orange)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar app-bar-orange">
+  <svg class="app-bar-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+  <span class="app-bar-title">AI Procedure Assistant</span>
+  <div style="font-size:7px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.15);padding:2px 7px;border-radius:8px;">Session: 28 min</div>
+</div>
+<div class="chat-body">
+  <div class="chat-msg-user">What do I do if a patient urgently needs blood but no compatible type is available?</div>
+  <div style="display:flex;align-items:center;gap:4px;padding:3px 14px;">
+    <div class="typing-dot"></div><div class="typing-dot" style="opacity:.7;"></div><div class="typing-dot" style="opacity:.4;"></div>
+    <span style="font-size:7px;color:var(--text-sec);margin-left:3px;">AI thinking...</span>
+  </div>
+</div>
+<div class="chat-input-bar">
+  <div class="chat-input">Ask about a procedure...</div>
+  <div class="chat-send-btn"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>AGENT-R → C → F → P</span></div><div class="phone-wrap">
+    <div class="screen-label">Structured Procedure Response</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-orange)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar app-bar-orange"><span class="app-bar-title">AI Procedure Assistant</span></div>
+<div class="screen-body">
+  <div class="ai-badge"><span>⚡ AI-Generated — Validate against current institutional policy before clinical action.</span></div>
+  <div class="risk-banner red">
+    <div class="risk-banner-label">⚠ CRITICAL RISK</div>
+    <div class="risk-banner-sub">Emergency Blood Transfusion Protocol</div>
+  </div>
+  <div class="chat-msg-ai" style="margin:5px 8px 0 8px;">
+    <div style="font-size:7.5px;color:var(--text-pri);line-height:1.5;"><b>Summary:</b> When no compatible blood is available, activate the O-negative emergency protocol and escalate immediately to the Blood Bank Director.</div>
+  </div>
+  <div class="proc-section">
+    <div class="proc-section-title">Steps</div>
+    <div class="proc-step"><div class="proc-step-num">1</div><div class="proc-step-text">Call Blood Bank: +237 233 500 101 Ext. 204</div></div>
+    <div class="proc-step"><div class="proc-step-num">2</div><div class="proc-step-text">Request O-negative emergency stock</div></div>
+    <div class="proc-approval">🔒 Approval required: Senior Physician + Blood Bank Director</div>
+    <div class="proc-step"><div class="proc-step-num">3</div><div class="proc-step-text">Document consent and clinical indication</div></div>
+  </div>
+  <div class="escalation-card">
+    <div class="escalation-label">⬆ ESCALATION REQUIRED</div>
+    <div class="escalation-text">Contact: CMO on-call → Blood Bank Director → Hospital Director</div>
+  </div>
+  <div class="chip-row"><div class="chip chip-purple">📎 Source: BB-EMERG-003 v2</div></div>
+  <div class="s-btn btn-outline-blue">Step through this procedure →</div>
+</div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tap workflow</span></div><div class="phone-wrap">
+    <div class="screen-label">Workflow Mode</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Workflow Mode</span></div>
+<div class="screen-body">
+  <div class="step-indicator">
+    <div class="step-pill">Step 2 / 5</div>
+    <div style="font-size:7.5px;color:var(--text-sec);">BB-EMERG-003</div>
+  </div>
+  <div class="step-progress"><div class="step-fill" style="width:40%;"></div></div>
+  <div class="wf-step-card">
+    <div class="wf-step-num">2</div>
+    <div class="wf-step-text">Request O-negative emergency stock from Blood Bank and confirm availability with the on-duty technician.</div>
+    <div class="wf-compliance">📋 WHO Guideline WB-2019-§4.3: Document clinical indication before release.</div>
+    <div class="wf-approval-gate">
+      <div class="wf-lock-icon">🔒</div>
+      <div class="wf-approval-text">APPROVAL REQUIRED: Senior Physician + Blood Bank Director must authorise before proceeding to Step 3.</div>
+    </div>
+  </div>
+</div>
+<div class="wf-nav">
+  <div class="wf-nav-prev">← Previous</div>
+  <div class="wf-nav-next disabled">Confirm Approval → Next</div>
+</div>
+    </div>
+  </div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-a">STREAM A — WHATSAPP</div>
+      <div class="module-name">WhatsApp · Navigation + Emergency</div>
+      <div class="module-desc">Twilio API · HMAC-SHA256 validated · AGENT-R → N/E → AGENT-O</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">Navigation Query</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      <div class="channel-frame wa-frame">
+<div class="wa-header">
+  <div class="wa-avatar">🏥</div>
+  <div><div class="wa-name">AI-HPS · HGD</div><div class="wa-online">Online</div></div>
+</div>
+<div class="wa-body">
+  <div class="wa-bubble-out"><div class="wa-text">Where is the blood bank?</div><div class="wa-time">09:41 ✓✓</div></div>
+  <div class="wa-bubble-in">
+    <div class="wa-text">📍 <b>Blood Bank — Directions</b><br><br>From the main entrance:<br>1. Walk straight past Reception<br>2. Turn left at the blue pharmacy sign<br>3. Blood Bank is the 2nd door on your right<br><br><i>🏥 AI-HPS Guidance · Ask staff if unsure.</i></div>
+    <div class="wa-time">09:41</div>
+  </div>
+</div>
+<div class="wa-input-bar">
+  <div class="wa-input-field">Type a message...</div>
+  <div class="wa-send"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
+</div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(232,98,10,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Emergency keyword</span></div><div class="phone-wrap">
+    <div class="screen-label">Emergency Response</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      <div class="channel-frame wa-frame">
+<div class="wa-header">
+  <div class="wa-avatar">🏥</div>
+  <div><div class="wa-name">AI-HPS · HGD</div><div class="wa-online">Online</div></div>
+</div>
+<div class="wa-body">
+  <div class="wa-bubble-out"><div class="wa-text">Someone has collapsed at the entrance help</div><div class="wa-time">09:44 ✓✓</div></div>
+  <div class="wa-emerg">
+    <div class="wa-emerg-title">🚨 EMERGENCY — ACT NOW</div>
+    <div class="wa-emerg-text">1. Go to Block A Emergency entrance immediately<br>2. Tell the nurse: <b>Patient needs urgent help</b><br>3. Emergency line: <b>+237 233 500 101</b><br><br>Stay calm. Help is on the way.</div>
+    <div class="wa-time" style="color:rgba(198,40,40,0.5);">09:44</div>
+  </div>
+</div>
+<div class="wa-input-bar">
+  <div class="wa-input-field">Type a message...</div>
+  <div class="wa-send"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
+</div></div>
+    </div>
+  </div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-a">STREAM A — SMS + USSD</div>
+      <div class="module-name">SMS (~160 chars) · USSD (zero internet · 182 chars/screen)</div>
+      <div class="module-desc">Orange/MTN Cameroon · Africa's Talking API · Numeric menu navigation</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">SMS Conversation</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      <div class="channel-frame sms-frame">
+<div class="sms-header">
+  <div class="sms-from">AI-HPS</div><div class="sms-info">HGD Hospital Guide</div>
+</div>
+<div class="sms-body">
+  <div class="sms-bubble">Where is maternity ward?</div>
+  <div class="sms-bubble out">Maternity: Main entrance → right at reception → Block C 1st floor. Open 24h. Call +237 233 500 101. -AI-HPS<div class="sms-time">09:42</div></div>
+  <div class="sms-bubble">How do I register as a new patient</div>
+  <div class="sms-bubble out">Registration: Outpatient Reception Block B. Bring ID. 07:00-17:00. Pay 1000 CFA at cashier. -AI-HPS<div class="sms-time">09:43</div></div>
+</div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(232,98,10,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>USSD dial *128*3#</span></div><div class="phone-wrap">
+    <div class="screen-label">USSD Main Menu</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      <div class="channel-frame ussd-frame">
+<div class="ussd-header">
+  <div class="ussd-network">Orange CM</div>
+  <div class="ussd-shortcode">*128*3#</div>
+</div>
+<div class="ussd-body">
+  <div class="ussd-title">AI-HPS HOSPITAL GUIDE</div>
+  <div class="ussd-screen">AI-HPS Hospital Guide
+Hôpital Général de Douala
+
+1. Find a department
+2. Register as patient
+3. Emergency help
+4. Department info
+5. Service hours
+
+0. Exit</div>
+</div>
+<div class="ussd-input">
+  <div class="ussd-key">Enter: 1_</div>
+  <div class="ussd-send">Send</div>
+</div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(232,98,10,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Select option 1</span></div><div class="phone-wrap">
+    <div class="screen-label">USSD Navigation (1/2)</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      <div class="channel-frame ussd-frame">
+<div class="ussd-header">
+  <div class="ussd-network">Orange CM</div>
+  <div class="ussd-shortcode">*128*3#</div>
+</div>
+<div class="ussd-body">
+  <div class="ussd-title">Step 1/2</div>
+  <div class="ussd-screen">Blood Bank — Step 1/2
+
+From main entrance:
+1. Walk straight past
+   Reception desk
+2. Turn left at blue
+   pharmacy sign
+
+2. Next step
+99. Main Menu</div>
+</div>
+<div class="ussd-input">
+  <div class="ussd-key">Enter: 2_</div>
+  <div class="ussd-send">Send</div>
+</div></div>
+    </div>
+  </div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-admin">ADMIN — CONTENT MANAGEMENT</div>
+      <div class="module-name">Procedure Editor · Two-Person Approval · KB Sync</div>
+      <div class="module-desc">CRUD · Status machine · Redis Pub/Sub → SVC-07 re-index</div>
+    </div>
+    <div class="flow-row"><div class="phone-wrap">
+    <div class="screen-label">Procedure Editor</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">New Procedure</span></div>
+<div class="screen-body">
+  <div class="step-indicator">
+    <div class="step-pill" style="background:var(--clin-green);">Step 3 / 7</div>
+  </div>
+  <div class="step-progress"><div class="step-fill orange" style="width:43%;"></div></div>
+  <div class="s-card">
+    <div class="s-card-title">Procedure Details</div>
+    <div class="s-field"><div class="s-field-label">Title</div><div class="s-field-value">ICU Ventilator Weaning Protocol</div></div>
+    <div class="s-field"><div class="s-field-label">Department</div><div class="s-field-value">ICU</div></div>
+    <div class="s-field"><div class="s-field-label">Risk Level</div>
+      <div style="display:flex;gap:4px;margin-top:3px;">
+        <div class="chip chip-grey">Low</div><div class="chip chip-green">Medium</div>
+        <div class="chip chip-amber">High</div>
+        <div class="chip" style="background:var(--clin-red);color:#fff;font-size:7px;">Critical ✓</div>
+      </div>
+    </div>
+    <div class="s-field"><div class="s-field-label">Stream Target</div>
+      <div style="display:flex;gap:4px;margin-top:3px;">
+        <div class="chip chip-grey">A (Public)</div>
+        <div class="chip" style="background:var(--hgd-blue);color:#fff;font-size:7px;">B (Staff) ✓</div>
+        <div class="chip chip-blue">Both</div>
+      </div>
+    </div>
+  </div>
+  <div class="s-btn btn-orange">Continue to Steps Builder →</div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Submit for approval</span></div><div class="phone-wrap">
+    <div class="screen-label">Approval Queue</div>
+    <div class="phone-frame">
+      
+<div class="status-bar" style="background:var(--hgd-blue)">
+  <span class="status-time">09:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+  </div>
+</div>
+      
+<div class="app-bar"><span class="app-bar-title">Approval Queue</span>
+  <div class="nav-badge" style="position:relative;margin-left:auto;margin-top:0;">2</div></div>
+<div class="screen-body">
+  <div class="proc-list-item">
+    <div style="flex:1;">
+      <div class="result-title" style="font-size:9px;">ICU Ventilator Weaning Protocol</div>
+      <div class="result-meta">Created by: Dr. Mbarga · ICU · Critical</div>
+      <div style="margin-top:4px;"><span class="status-badge sb-pending">⏳ Awaiting 1st Approval</span></div>
+    </div>
+  </div>
+  <div class="approval-step">
+    <div class="approval-avatar">MB</div>
+    <div class="approval-info"><div class="approval-name">Dr. Mbarga (Creator)</div><div class="approval-role">ICU Specialist</div></div>
+    <div class="approval-status" style="color:var(--text-sec);">Created</div>
+  </div>
+  <div class="approval-step" style="background:var(--hgd-blue3);">
+    <div class="approval-avatar" style="background:var(--hgd-orange3);color:var(--hgd-orange);">?</div>
+    <div class="approval-info"><div class="approval-name">Approver 1 (You)</div><div class="approval-role">Admin Staff</div></div>
+    <div class="approval-status as-waiting">Pending</div>
+  </div>
+  <div class="approval-step" style="opacity:.4;">
+    <div class="approval-avatar" style="background:#F1F5F9;color:var(--text-sec);">?</div>
+    <div class="approval-info"><div class="approval-name">Approver 2</div><div class="approval-role">Required — different admin</div></div>
+    <div class="approval-status" style="color:var(--text-sec);">Waiting</div>
+  </div>
+  <div style="display:flex;gap:5px;padding:6px 8px;">
+    <div class="s-btn btn-green" style="flex:1;margin:0;">✓ Approve</div>
+    <div class="s-btn btn-outline" style="flex:1;margin:0;">✗ Reject</div>
+  </div>
+</div>
+<div class="nav-bar">
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="nav-item-label">Home</span>
+    </div>
+    <div class="nav-item active">
+      <div class="nav-active-bar"></div>
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="nav-item-label">Browse</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="nav-item-label">Search</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span class="nav-item-label">Assistant</span>
+    </div>
+    <div class="nav-item">
+      
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="nav-item-label">Profile</span>
+    </div></div>
+    </div>
+  </div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>2 admins approve</span></div><div class="web-frame">
+<div class="web-topbar">
+  <div class="web-topbar-logo">AI-<span>HPS</span></div>
+  <div class="web-topbar-right">Admin · Analytics Dashboard</div>
+</div>
+<div class="web-body">
+  <div class="web-sidebar">
+    
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🏠</span>
+      <span class="web-sidebar-label">Home</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">📁</span>
+      <span class="web-sidebar-label">Browse</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🔍</span>
+      <span class="web-sidebar-label">Search</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">💬</span>
+      <span class="web-sidebar-label">Chat</span>
+    </div>
+    <div class="web-sidebar-item active">
+      <span style="font-size:12px;">📊</span>
+      <span class="web-sidebar-label">Analytics</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🛡️</span>
+      <span class="web-sidebar-label">Audit</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">⚙️</span>
+      <span class="web-sidebar-label">Admin</span>
+    </div>
+  </div>
+  <div class="web-main">
+    <div style="font-size:11px;font-weight:700;color:var(--text-pri);margin-bottom:8px;">Analytics · Last 30 Days</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Total Queries</div>
+        <div class="kpi-value">1,247</div>
+        <div class="kpi-trend trend-up">↑ 18% vs last month</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-title">Content Gap Rate</div>
+        <div class="kpi-value" style="font-size:16px;">8.3%</div>
+        <div class="kpi-trend trend-dn">↑ 2.1% — review needed</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-title">Emergencies</div>
+        <div class="kpi-value" style="color:var(--clin-red);">14</div>
+        <div class="kpi-trend" style="color:var(--text-sec);">Stream A: 11 · B: 3</div>
+      </div>
+    </div>
+    <div style="font-size:9px;font-weight:700;color:var(--text-pri);margin:6px 0 4px;">Content Gaps — Top Queries with No Result</div>
+    <div style="font-size:7.5px;color:var(--text-pri);padding:4px 0;border-bottom:1px solid var(--border);">Neonatal resuscitation protocol <span style="color:var(--hgd-orange);font-weight:700;float:right;">23×</span></div>
+    <div style="font-size:7.5px;color:var(--text-pri);padding:4px 0;border-bottom:1px solid var(--border);">Medication dosage for paediatric sepsis <span style="color:var(--hgd-orange);font-weight:700;float:right;">17×</span></div>
+    <div style="font-size:7.5px;color:var(--text-pri);padding:4px 0;">Surgical post-op wound care <span style="color:var(--hgd-orange);font-weight:700;float:right;">12×</span></div>
+  </div>
+</div></div></div>
+  </div>
+
+<div class="section-sep"></div>
+
+<div class="module-section">
+    <div class="module-label">
+      <div class="module-tag tag-web">WEB PORTAL — AUDIT & ANALYTICS</div>
+      <div class="module-name">Immutable Audit Log · HMAC-SHA256 signed · Analytics Dashboard</div>
+      <div class="module-desc">Administrative Staff only · 5-year retention · Append-only PostgreSQL trigger</div>
+    </div>
+    <div class="flow-row"><div class="web-frame">
+<div class="web-topbar">
+  <div class="web-topbar-logo">AI-<span>HPS</span></div>
+  <div class="web-topbar-right">Admin · HGD · Audit Log</div>
+</div>
+<div class="web-body">
+  <div class="web-sidebar">
+    
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🏠</span>
+      <span class="web-sidebar-label">Home</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">📁</span>
+      <span class="web-sidebar-label">Browse</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🔍</span>
+      <span class="web-sidebar-label">Search</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">💬</span>
+      <span class="web-sidebar-label">Chat</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">📊</span>
+      <span class="web-sidebar-label">Analytics</span>
+    </div>
+    <div class="web-sidebar-item active">
+      <span style="font-size:12px;">🛡️</span>
+      <span class="web-sidebar-label">Audit</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">⚙️</span>
+      <span class="web-sidebar-label">Admin</span>
+    </div>
+  </div>
+  <div class="web-main">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-pri);">Audit Log</div>
+      <div style="font-size:8px;background:var(--hgd-blue);color:#fff;padding:3px 8px;border-radius:4px;">Export CSV</div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-icon ai-blue"><svg viewBox="0 0 24 24" fill="none"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="#004A8F"/></svg></div>
+      <div class="audit-content">
+        <div class="audit-type">ai_query · Blood Bank Incompatibility</div>
+        <div class="audit-user">Dr. Ayuk · ICU · Stream B</div>
+        <div class="audit-hmac">✓ HMAC: a3f9c1... · Risk: Critical</div>
+      </div>
+      <div class="audit-time" style="font-size:7px;color:var(--text-sec);white-space:nowrap;">09:41:22</div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-icon ai-red"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#C62828"/></svg></div>
+      <div class="audit-content">
+        <div class="audit-type">emergency · Stream A</div>
+        <div class="audit-user">Anonymous · WhatsApp · escalation_triggered: true</div>
+        <div class="audit-hmac">✓ HMAC: 7b2e44...</div>
+      </div>
+      <div class="audit-time" style="font-size:7px;color:var(--text-sec);white-space:nowrap;">09:44:07</div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-icon ai-green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#2E7D32"/></svg></div>
+      <div class="audit-content">
+        <div class="audit-type">publish · ICU Sepsis Protocol v3</div>
+        <div class="audit-user">Admin: Dr. Fon + Admin: Mrs. Ngo (2-person ✓)</div>
+        <div class="audit-hmac">✓ HMAC: c9d1f8...</div>
+      </div>
+      <div class="audit-time" style="font-size:7px;color:var(--text-sec);white-space:nowrap;">08:30:11</div>
+    </div>
+  </div>
+</div></div><div class="flow-arrow-lbl"><svg viewBox="0 0 36 16" fill="none"><path d="M0 8h30M24 3l8 5-8 5" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>View analytics</span></div><div class="web-frame">
+<div class="web-topbar">
+  <div class="web-topbar-logo">AI-<span>HPS</span></div>
+  <div class="web-topbar-right">Admin · Analytics Dashboard</div>
+</div>
+<div class="web-body">
+  <div class="web-sidebar">
+    
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🏠</span>
+      <span class="web-sidebar-label">Home</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">📁</span>
+      <span class="web-sidebar-label">Browse</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🔍</span>
+      <span class="web-sidebar-label">Search</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">💬</span>
+      <span class="web-sidebar-label">Chat</span>
+    </div>
+    <div class="web-sidebar-item active">
+      <span style="font-size:12px;">📊</span>
+      <span class="web-sidebar-label">Analytics</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">🛡️</span>
+      <span class="web-sidebar-label">Audit</span>
+    </div>
+    <div class="web-sidebar-item">
+      <span style="font-size:12px;">⚙️</span>
+      <span class="web-sidebar-label">Admin</span>
+    </div>
+  </div>
+  <div class="web-main">
+    <div style="font-size:11px;font-weight:700;color:var(--text-pri);margin-bottom:8px;">Analytics · Last 30 Days</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Total Queries</div>
+        <div class="kpi-value">1,247</div>
+        <div class="kpi-trend trend-up">↑ 18% vs last month</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-title">Content Gap Rate</div>
+        <div class="kpi-value" style="font-size:16px;">8.3%</div>
+        <div class="kpi-trend trend-dn">↑ 2.1% — review needed</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-title">Emergencies</div>
+        <div class="kpi-value" style="color:var(--clin-red);">14</div>
+        <div class="kpi-trend" style="color:var(--text-sec);">Stream A: 11 · B: 3</div>
+      </div>
+    </div>
+    <div style="font-size:9px;font-weight:700;color:var(--text-pri);margin:6px 0 4px;">Content Gaps — Top Queries with No Result</div>
+    <div style="font-size:7.5px;color:var(--text-pri);padding:4px 0;border-bottom:1px solid var(--border);">Neonatal resuscitation protocol <span style="color:var(--hgd-orange);font-weight:700;float:right;">23×</span></div>
+    <div style="font-size:7.5px;color:var(--text-pri);padding:4px 0;border-bottom:1px solid var(--border);">Medication dosage for paediatric sepsis <span style="color:var(--hgd-orange);font-weight:700;float:right;">17×</span></div>
+    <div style="font-size:7.5px;color:var(--text-pri);padding:4px 0;">Surgical post-op wound care <span style="color:var(--hgd-orange);font-weight:700;float:right;">12×</span></div>
+  </div>
+</div></div></div>
+  </div>
+
+</div><!-- /canvas -->
+</body>
+</html>

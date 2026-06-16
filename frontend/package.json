@@ -1,0 +1,13 @@
+{
+  "name": "aihps-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "preview": "npm run preview --workspace=apps/web"
+  }
+}

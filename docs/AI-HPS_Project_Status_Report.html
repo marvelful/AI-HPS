@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI-HPS — Project Status Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 15px;
+      color: #1a2233;
+      background: #f4f7fb;
+      line-height: 1.7;
+    }
+    header {
+      background: linear-gradient(120deg, #0a3d62 0%, #1e6fa5 100%);
+      color: white;
+      padding: 48px 60px 36px;
+    }
+    header h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: 0.5px; }
+    header .subtitle { font-size: 1.05rem; margin-top: 6px; opacity: 0.85; }
+    header .meta { margin-top: 18px; font-size: 0.9rem; opacity: 0.7; }
+
+    .container { max-width: 1060px; margin: 0 auto; padding: 40px 30px; }
+
+    /* Overall progress banner */
+    .progress-banner {
+      background: white;
+      border-radius: 12px;
+      padding: 30px 36px;
+      margin-bottom: 36px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+      display: flex;
+      align-items: center;
+      gap: 36px;
+      flex-wrap: wrap;
+    }
+    .progress-circle {
+      flex-shrink: 0;
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      background: conic-gradient(#1e6fa5 0% 75%, #dde8f4 75% 100%);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .progress-circle::before {
+      content: '';
+      position: absolute;
+      width: 80px; height: 80px;
+      background: white;
+      border-radius: 50%;
+    }
+    .progress-circle span {
+      position: relative; z-index: 1;
+      font-size: 1.4rem; font-weight: 700; color: #0a3d62;
+    }
+    .progress-text h2 { font-size: 1.35rem; color: #0a3d62; }
+    .progress-text p { margin-top: 6px; color: #4a5568; max-width: 600px; }
+
+    /* Section styles */
+    section { margin-bottom: 48px; }
+    h2.section-title {
+      font-size: 1.35rem;
+      color: #0a3d62;
+      border-left: 4px solid #1e6fa5;
+      padding-left: 14px;
+      margin-bottom: 20px;
+    }
+    h3.sub-title {
+      font-size: 1.05rem;
+      color: #1e6fa5;
+      margin: 22px 0 10px;
+      font-weight: 600;
+    }
+
+    /* Card grid */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .card .card-title { font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
+    .card p { font-size: 0.92rem; color: #4a5568; }
+    .card.done { border-top: 4px solid #27ae60; }
+    .card.partial { border-top: 4px solid #f39c12; }
+    .card.todo { border-top: 4px solid #e74c3c; }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge-done   { background: #e8f8ef; color: #1a7a3a; }
+    .badge-partial { background: #fef3e0; color: #b76a00; }
+    .badge-todo   { background: #fdecea; color: #b51b1b; }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      font-size: 0.92rem;
+    }
+    thead tr { background: #0a3d62; color: white; }
+    th { padding: 13px 16px; text-align: left; font-weight: 600; }
+    td { padding: 12px 16px; border-bottom: 1px solid #edf2f7; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f7fafd; }
+
+    /* Steps */
+    .steps { }
+    .step {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      background: white;
+      border-radius: 10px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: #1e6fa5;
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-body h4 { font-size: 1rem; font-weight: 700; color: #0a3d62; margin-bottom: 6px; }
+    .step-body p { color: #4a5568; font-size: 0.92rem; }
+    .step-body ul { margin: 8px 0 0 18px; color: #4a5568; font-size: 0.92rem; }
+    .step-body ul li { margin-bottom: 4px; }
+    .step-body .tech-note {
+      margin-top: 10px;
+      background: #f0f5ff;
+      border-left: 3px solid #1e6fa5;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: #2c5282;
+      border-radius: 4px;
+    }
+    .step.priority-high .step-num { background: #e74c3c; }
+    .step.priority-medium .step-num { background: #f39c12; }
+    .step.priority-low .step-num { background: #27ae60; }
+
+    /* What it can do */
+    .feature-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; }
+    .feature-list li {
+      background: white;
+      border-radius: 8px;
+      padding: 14px 18px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+      padding-left: 42px;
+      position: relative;
+      font-size: 0.93rem;
+    }
+    .feature-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      color: #27ae60;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    /* Gap list */
+    .gap-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; }
+    .gap-list li {
+      background: white;
+      border-radius: 8px;
+      padding: 14px 18px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+      padding-left: 42px;
+      position: relative;
+      font-size: 0.93rem;
+    }
+    .gap-list li::before {
+      content: '✗';
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      color: #e74c3c;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    /* Info box */
+    .info-box {
+      background: #e8f3fb;
+      border: 1px solid #b8d9f2;
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin: 18px 0;
+      font-size: 0.93rem;
+      color: #1a4a6e;
+    }
+    .info-box strong { display: block; margin-bottom: 5px; }
+
+    .warn-box {
+      background: #fef8e7;
+      border: 1px solid #f8d97a;
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin: 18px 0;
+      font-size: 0.93rem;
+      color: #7a4b00;
+    }
+    .warn-box strong { display: block; margin-bottom: 5px; }
+
+    /* Divider */
+    hr { border: none; border-top: 2px solid #e2e8f0; margin: 40px 0; }
+
+    /* Architecture diagram */
+    .arch-box {
+      background: white;
+      border-radius: 10px;
+      padding: 26px 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      font-family: 'Courier New', monospace;
+      font-size: 0.83rem;
+      line-height: 1.9;
+      color: #2d3748;
+      overflow-x: auto;
+    }
+
+    footer {
+      background: #0a3d62;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      padding: 24px;
+      font-size: 0.85rem;
+      margin-top: 60px;
+    }
+
+    @media (max-width: 680px) {
+      header { padding: 32px 20px; }
+      .container { padding: 24px 14px; }
+      .progress-banner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>AI-HPS — Project Status Report</h1>
+  <div class="subtitle">AI Hospital Procedure System &mdash; Hôpital Général de Douala (HGD), Cameroon</div>
+  <div class="meta">
+    Prepared for: Ful Marvel &nbsp;|&nbsp; Supervisor: Dr. Tabueu Cabrel &nbsp;|&nbsp; Institution: IUC &nbsp;|&nbsp; Date: June 9, 2026
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ===== OVERALL PROGRESS ===== -->
+  <div class="progress-banner">
+    <div class="progress-circle"><span>75%</span></div>
+    <div class="progress-text">
+      <h2>Overall Project Completion: 75%</h2>
+      <p>
+        The core of the system is fully built and functional. The AI brain, the hospital database, the user security system,
+        and the mobile app structure are all in place. What remains is connecting everything together, loading the hospital
+        documents into the system, and making sure the app works end-to-end before final testing and delivery.
+      </p>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 1: WHAT IS AI-HPS? ===== -->
+  <section>
+    <h2 class="section-title">1. What Is AI-HPS? (Simple Explanation)</h2>
+
+    <div class="info-box">
+      <strong>For non-technical readers:</strong>
+      AI-HPS is a smart assistant system for Hôpital Général de Douala. It works on WhatsApp, SMS,
+      a mobile app, and a web portal. A patient can send a message asking "How do I register for surgery?"
+      and the system replies with the correct steps in English or French — instantly.
+      Hospital staff (doctors, nurses, admins) use the mobile app to look up medical procedures,
+      approve new content, and track how the system is being used.
+    </div>
+
+    <h3 class="sub-title">Two Types of Users</h3>
+    <div class="card-grid">
+      <div class="card done">
+        <div class="card-title">Stream A — Patients / Public</div>
+        <p>
+          Ordinary people contact the hospital via <strong>WhatsApp, SMS, or USSD</strong> (short code on any phone).
+          No registration or login needed. The AI answers in English or French.
+          If there is an emergency, it responds in under 3 seconds.
+        </p>
+      </div>
+      <div class="card done">
+        <div class="card-title">Stream B — Hospital Staff</div>
+        <p>
+          Doctors, nurses, pharmacists, and administrators log in via the <strong>mobile app or web portal</strong>.
+          They can browse all procedures, get detailed clinical guidance, submit new procedures for approval,
+          and view system analytics.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 2: SYSTEM ARCHITECTURE ===== -->
+  <section>
+    <h2 class="section-title">2. How the System Is Built (Technical Architecture)</h2>
+
+    <div class="info-box">
+      <strong>For non-technical readers:</strong>
+      Think of the system as a building with several rooms, each doing a specific job.
+      There is a security room (login), a knowledge room (procedures), an AI room (the smart brain),
+      a record room (audit logs), and a reception room (the app the user sees).
+      All rooms talk to each other through secure channels.
+    </div>
+
+    <div class="arch-box">
+┌─────────────────────────────────────────────────────────────────────┐
+│                         USER ENTRY POINTS                           │
+│   WhatsApp  │  SMS  │  USSD  │  Mobile App  │  Web Portal          │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  SVC-01 Gateway │  (Nginx — the front door / security guard)
+                    │  Rate limiting  │
+                    │  Auth check     │
+                    └────────┬────────┘
+          ┌──────────────────┼──────────────────────────┐
+          │                  │                          │
+   ┌──────▼──────┐   ┌───────▼──────┐         ┌────────▼────────┐
+   │  SVC-02     │   │   SVC-03     │         │   Agent Pipeline │
+   │  Auth/RBAC  │   │  Procedures  │         │   (Port 8020)    │
+   │  Login/JWT  │   │  CRUD+Approval│        │   The AI Brain   │
+   └─────────────┘   └──────────────┘         └────────┬────────┘
+                                                        │
+          ┌─────────────────────────────────────────────┘
+          │
+   ┌──────▼──────────────────────────────────────────────────────────┐
+   │                    AI AGENTS (6 Agents)                         │
+   │  R (Router) → E (Emergency) / N (Navigation) / C (Chat) /      │
+   │               P (Procedures) → O (Output Formatter)            │
+   └──────────────────────────────────────────────────────────────────┘
+          │
+   ┌──────▼──────┐   ┌─────────────┐   ┌─────────────┐
+   │  SVC-07     │   │  SVC-06     │   │  Database   │
+   │  KB Sync    │   │  Audit Logs │   │  PostgreSQL │
+   │  Vector     │   │  Compliance │   │  17 tables  │
+   │  Search     │   │             │   │             │
+   └─────────────┘   └─────────────┘   └─────────────┘
+          │
+   ┌──────▼──────────────────────┐
+   │  Redis (Fast Cache)         │  ← Emergency responses pre-loaded here
+   │  RabbitMQ (Message Queue)   │  ← Audit events processed here
+   └─────────────────────────────┘
+    </div>
+
+    <h3 class="sub-title">Services Overview</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>What It Does</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>SVC-01 — Gateway (Nginx)</strong></td>
+          <td>The front door of the system. Controls who can enter, limits abuse (no spam), and routes each request to the right room.</td>
+          <td><span class="badge badge-done">Complete</span></td>
+        </tr>
+        <tr>
+          <td><strong>SVC-02 — Auth &amp; Security</strong></td>
+          <td>Handles login, passwords, and permissions. Knows who is a doctor, who is a nurse, who is an admin — and only shows them what they are allowed to see.</td>
+          <td><span class="badge badge-done">Complete</span></td>
+        </tr>
+        <tr>
+          <td><strong>SVC-03 — Procedures Manager</strong></td>
+          <td>The library of all hospital procedures. Staff can create, edit, and publish procedures through an approval process.</td>
+          <td><span class="badge badge-done">Complete</span></td>
+        </tr>
+        <tr>
+          <td><strong>SVC-04 — Notifications</strong></td>
+          <td>Sends push notifications to mobile app users when a procedure is approved, updated, or when they have a new message.</td>
+          <td><span class="badge badge-todo">Not Yet Built</span></td>
+        </tr>
+        <tr>
+          <td><strong>SVC-05 — Analytics</strong></td>
+          <td>Tracks usage statistics: how many questions were asked, what topics are popular, what information is missing.</td>
+          <td><span class="badge badge-todo">Not Yet Built</span></td>
+        </tr>
+        <tr>
+          <td><strong>SVC-06 — Audit Logs</strong></td>
+          <td>Records every important action in the system for compliance and accountability (who did what, when).</td>
+          <td><span class="badge badge-done">Complete</span></td>
+        </tr>
+        <tr>
+          <td><strong>SVC-07 — Knowledge Base Sync</strong></td>
+          <td>Manages the AI's search ability. Converts hospital documents into a format the AI can search through intelligently.</td>
+          <td><span class="badge badge-done">Complete</span></td>
+        </tr>
+        <tr>
+          <td><strong>Agent Pipeline — AI Brain</strong></td>
+          <td>The 6-agent AI engine that reads user queries, understands intent, searches documents, and replies appropriately per platform.</td>
+          <td><span class="badge badge-done">Complete</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== SECTION 3: WHAT THE SYSTEM CAN ALREADY DO ===== -->
+  <section>
+    <h2 class="section-title">3. What the System Can Already Do</h2>
+
+    <div class="info-box">
+      <strong>For non-technical readers:</strong>
+      The following features are coded and ready. They have not been fully tested together yet, but all the pieces are built.
+    </div>
+
+    <h3 class="sub-title">AI &amp; Intelligence</h3>
+    <ul class="feature-list">
+      <li>Detect medical emergencies in a message and respond in under 3 seconds — without even calling the AI (using pre-cached data)</li>
+      <li>Understand what the user wants: emergency help, navigation directions, general information, or a specific procedure</li>
+      <li>Find the most relevant hospital procedures using both keyword search and semantic (meaning-based) AI search</li>
+      <li>Generate answers grounded only in real hospital documents — it will not make up information</li>
+      <li>Refuse to answer if it cannot find a match above its confidence threshold (0.40 out of 1.0)</li>
+      <li>Detect whether the user is writing in English or French and reply accordingly</li>
+      <li>Format its replies differently depending on the platform: shorter for SMS, full for the web portal</li>
+    </ul>
+
+    <h3 class="sub-title">Security &amp; Access Control</h3>
+    <ul class="feature-list">
+      <li>Secure login with encrypted password and JWT tokens (auto-expire for safety)</li>
+      <li>10 distinct staff roles: Super Admin, Admin, Doctor, Nurse, Pharmacist, Technician, Radiologist, Receptionist, Intern, Auditor</li>
+      <li>Procedures filtered by role — a nurse sees nurse-relevant content, a doctor sees all clinical content</li>
+      <li>Account lockout after repeated failed login attempts</li>
+      <li>Token blacklist — logging out truly invalidates the session</li>
+    </ul>
+
+    <h3 class="sub-title">Procedure Management</h3>
+    <ul class="feature-list">
+      <li>Create, edit, and version hospital procedures with categorization by department</li>
+      <li>Multi-stage approval workflow — a procedure must be approved before it goes live</li>
+      <li>Risk level tagging: High, Medium, Low</li>
+      <li>Target audience tagging: Stream A (patients) or Stream B (staff) or both</li>
+      <li>Full-text and AI semantic search across all procedures</li>
+      <li>Navigation paths — directions from one hospital location to a department</li>
+      <li>Emergency content entries — pre-written responses for critical situations</li>
+    </ul>
+
+    <h3 class="sub-title">Mobile App (Hospital Staff)</h3>
+    <ul class="feature-list">
+      <li>Login screen with credential validation</li>
+      <li>Home screen with quick access chips and recent procedures</li>
+      <li>AI chat interface (assistant) with structured response cards</li>
+      <li>Procedure browser with filters and detail view</li>
+      <li>Search interface with full-text filters</li>
+      <li>Admin panel: manage procedures, run approvals, view compliance log</li>
+      <li>User profile and password change</li>
+      <li>Bilingual interface: English and French</li>
+      <li>Offline indicator banner (app shows warning when internet is lost)</li>
+    </ul>
+
+    <h3 class="sub-title">Database &amp; Infrastructure</h3>
+    <ul class="feature-list">
+      <li>Complete PostgreSQL database with 17 tables across 5 organized schemas</li>
+      <li>Redis fast-memory cache (emergency content is pre-loaded here)</li>
+      <li>RabbitMQ message queue for processing audit events in the background</li>
+      <li>Nginx API gateway with rate limiting and security checks</li>
+      <li>Docker setup for all infrastructure components</li>
+      <li>WHO medical PDF documents stored per department (5 departments, 15 PDFs)</li>
+    </ul>
+  </section>
+
+  <!-- ===== SECTION 4: WHAT IS NOT YET DONE ===== -->
+  <section>
+    <h2 class="section-title">4. What Is Not Yet Done</h2>
+
+    <div class="warn-box">
+      <strong>Important:</strong>
+      The missing pieces do not mean the system is broken — the foundation is solid. These are the final steps
+      that connect the system together, load it with real data, and deliver it to users on all platforms.
+    </div>
+
+    <h3 class="sub-title">Critical Missing Items</h3>
+    <ul class="gap-list">
+      <li><strong>PDF Ingestion Not Run:</strong> The 15 WHO medical PDFs are stored but have not yet been loaded into the database and AI search index. The AI cannot answer procedure questions from these documents yet.</li>
+      <li><strong>SVC-04 (Notifications) Not Built:</strong> Push notifications to the mobile app are not implemented. Users will not receive alerts for approvals, updates, or messages.</li>
+      <li><strong>SVC-05 (Analytics) Not Built:</strong> The analytics dashboard backend is missing. The app has the admin analytics screen, but it has no real data to display.</li>
+      <li><strong>WhatsApp/SMS/USSD Gateway Not Connected:</strong> The AI is ready to format replies for these channels, but the actual integration with a telecom or WhatsApp Business API gateway has not been set up.</li>
+      <li><strong>Frontend Not Connected to Backend:</strong> The mobile app currently runs on mock (fake) data. It has not been wired up to the real backend API services.</li>
+      <li><strong>Full Stack Never Run Together:</strong> All services have been built individually but have not been launched and tested as one unified running system.</li>
+    </ul>
+
+    <h3 class="sub-title">Secondary Missing Items</h3>
+    <ul class="gap-list">
+      <li>Web portal for patients and public access (the mobile app exists, but a browser-based portal is not built)</li>
+      <li>Offline sync — the mobile app shows an offline warning but cannot yet sync data when the connection comes back</li>
+      <li>End-to-end integration tests (automated tests that simulate real users)</li>
+      <li>Deployment to a real server (currently only runs on a developer laptop)</li>
+      <li>User acceptance testing with real HGD staff</li>
+      <li>Security audit and penetration testing before going live</li>
+    </ul>
+  </section>
+
+  <!-- ===== SECTION 5: WHAT NEEDS TO BE DONE — STEPS ===== -->
+  <section>
+    <h2 class="section-title">5. Roadmap — Steps to Complete the Project</h2>
+
+    <div class="info-box">
+      <strong>Reading guide:</strong>
+      Steps are ordered by priority. <span style="color:#e74c3c;font-weight:700;">Red numbers</span> = must be done first (blocking everything else).
+      <span style="color:#f39c12;font-weight:700;">Orange numbers</span> = important but can be done in parallel.
+      <span style="color:#27ae60;font-weight:700;">Green numbers</span> = final polish before delivery.
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="step priority-high">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Load Hospital Documents into the AI (PDF Ingestion)</h4>
+        <p>
+          The 15 WHO medical PDF documents are stored in the <code>PROCEDURES/</code> folder but have not been loaded
+          into the database or the AI search engine yet. This is the single most important missing step —
+          without it, the AI has no medical knowledge to draw from.
+        </p>
+        <ul>
+          <li>Run the ingestion script that extracts text from all PDFs</li>
+          <li>Store the text in the PostgreSQL procedures table</li>
+          <li>Build the vector (AI) search index from the text</li>
+          <li>Verify the AI can find and answer questions using the documents</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Run <code>backend\venv\Scripts\python scripts\ingest_procedures.py</code> from the project root.
+          Then start SVC-07 and AGENT-P and run a test query. Requires OpenAI API key to be set in <code>.env</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step priority-high">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Start All Services and Run the Full Stack</h4>
+        <p>
+          Each service (Auth, Procedures, Audit, KB Sync, Agent Pipeline) needs to be started and confirmed
+          to be talking to each other correctly. This is the first time the complete system will run together.
+        </p>
+        <ul>
+          <li>Start Docker (Redis, RabbitMQ, Nginx) via docker-compose</li>
+          <li>Start all backend services (SVC-02 through SVC-07 + Agent Pipeline)</li>
+          <li>Run a login request, then ask the AI a question end-to-end</li>
+          <li>Fix any startup errors that appear (config mismatches, missing env variables)</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Each service runs on its own port (8010–8015 + 8020). Start with
+          <code>uvicorn services.svc02_auth.main:app --port 8010</code> etc. Check
+          <code>http://localhost:808X/docs</code> for each service's interactive documentation.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step priority-high">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Connect the Mobile App to the Real Backend</h4>
+        <p>
+          The mobile app is currently showing fake (mock) data. Every screen needs to be connected
+          to the real API so that it displays real procedures, real user accounts, and real AI responses.
+        </p>
+        <ul>
+          <li>Update the API base URL in the frontend to point to the running backend</li>
+          <li>Test the login screen with a real staff account</li>
+          <li>Test the procedure browser loading real procedures from the database</li>
+          <li>Test the AI chat assistant returning real answers</li>
+          <li>Test the admin approval workflow from creation to approval</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Edit <code>frontend/api/client.ts</code> — set <code>baseURL</code> to
+          <code>http://&lt;host&gt;/api</code>. Remove mock imports in screens one by one.
+          Use TanStack Query hooks already wired in <code>frontend/hooks/</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step priority-medium">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>Build SVC-04 — Push Notifications Service</h4>
+        <p>
+          When a procedure is approved, updated, or when there is an important message,
+          staff should receive a push notification on their mobile device.
+          This service needs to be built, following the same pattern as the other services.
+        </p>
+        <ul>
+          <li>Create <code>backend/services/svc04_notifications/</code> following the same structure as SVC-02/03</li>
+          <li>Implement an endpoint to register device push tokens</li>
+          <li>Implement a send-notification endpoint that delivers to registered devices</li>
+          <li>Connect to Expo Push API (used by the frontend framework)</li>
+          <li>Wire up triggers: approval event → notification sent</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Use <code>httpx</code> to call Expo's push service at
+          <code>https://exp.host/--/api/v2/push/send</code>. The database table
+          <code>aihps_notifications.push_registrations</code> already exists in schema.sql.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step priority-medium">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h4>Build SVC-05 — Analytics Service</h4>
+        <p>
+          The admin dashboard has a KPI screen but no data behind it.
+          This service will aggregate usage statistics: how many queries per day,
+          which departments are most searched, what questions had no answers (content gaps).
+        </p>
+        <ul>
+          <li>Create <code>backend/services/svc05_analytics/</code></li>
+          <li>Build endpoints: daily query counts, top intents, content gap report, weekly summary</li>
+          <li>The analytics database tables already exist — just need the API layer</li>
+          <li>Connect the admin analytics screen in the mobile app to this service</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Tables <code>aihps_analytics.query_events</code>,
+          <code>aihps_analytics.content_gaps</code>, <code>aihps_analytics.weekly_reports</code>
+          are already in the schema. The agent pipeline already writes query events — just need aggregation endpoints.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="step priority-medium">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h4>Connect WhatsApp / SMS / USSD Channels</h4>
+        <p>
+          This is the most visible feature for patients. When a patient sends a WhatsApp message
+          to the hospital number, the AI should reply. The AI already knows how to format replies
+          for these channels — what is missing is the connection to the messaging provider.
+        </p>
+        <ul>
+          <li>Choose a messaging gateway provider (e.g., Africa's Talking for USSD/SMS, Twilio for WhatsApp)</li>
+          <li>Create a webhook endpoint that receives incoming messages from the gateway</li>
+          <li>Pass the message to the Agent Pipeline, then send the reply back via the gateway API</li>
+          <li>Test with a real SIM card (USSD) and a real WhatsApp Business account</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Add a <code>/webhook/whatsapp</code> and <code>/webhook/ussd</code>
+          route. For SMS/USSD in Cameroon, Africa's Talking has local operator coverage.
+          For WhatsApp, use the official WhatsApp Business Cloud API (Meta).
+          The Agent Pipeline's AGENT-O already handles platform-specific formatting.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="step priority-medium">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <h4>Seed the Database with Real Hospital Data</h4>
+        <p>
+          Beyond the WHO PDF documents, the system needs real HGD-specific data:
+          actual department details, operating hours, contact numbers, navigation directions,
+          and at least one staff admin account to log in with.
+        </p>
+        <ul>
+          <li>Create a seed script that inserts HGD departments, categories, and initial procedures</li>
+          <li>Add navigation paths for the hospital layout (directions between departments)</li>
+          <li>Create the initial super-admin account for system setup</li>
+          <li>Review and adapt the WHO procedures to match HGD's actual practices</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Write <code>backend/scripts/seed_hgd_data.py</code>.
+          Use SQLAlchemy models in <code>backend/shared/models/</code> to insert records.
+          Start with departments, then categories, then procedure entries.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 8 -->
+    <div class="step priority-low">
+      <div class="step-num">8</div>
+      <div class="step-body">
+        <h4>Integration Testing</h4>
+        <p>
+          Once all services are running and connected, the full system needs to be tested
+          end-to-end to catch bugs that only appear when all parts work together.
+        </p>
+        <ul>
+          <li>Test a patient sending an emergency message via the simulated WhatsApp channel — does it respond in under 3 seconds?</li>
+          <li>Test a staff member logging in, searching for a procedure, and reading the full steps</li>
+          <li>Test an admin creating a procedure and sending it through the approval workflow</li>
+          <li>Test that audit logs record every action correctly</li>
+          <li>Test that the AI refuses to answer questions it cannot find evidence for</li>
+          <li>Test in French: are all responses correct in French?</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Write test scripts using <code>pytest</code> and <code>httpx</code>.
+          Consider writing a Postman collection for manual API testing.
+          Test each agent in isolation first, then the full pipeline.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 9 -->
+    <div class="step priority-low">
+      <div class="step-num">9</div>
+      <div class="step-body">
+        <h4>Deployment to a Real Server</h4>
+        <p>
+          Currently the system only runs on a developer's Windows laptop.
+          It needs to be moved to a server that is always online, accessible from the internet,
+          and able to handle real hospital traffic.
+        </p>
+        <ul>
+          <li>Choose a hosting environment (a cloud server or a dedicated hospital server)</li>
+          <li>Configure the server with the same Docker setup</li>
+          <li>Set up a real domain name and HTTPS (SSL certificate for security)</li>
+          <li>Set up automatic backups of the database</li>
+          <li>Set up monitoring alerts so the team knows if the system goes down</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> The Docker Compose file is already written. For cloud deployment,
+          a VPS running Ubuntu with Docker Engine will work. Recommended: DigitalOcean Droplet or an
+          on-premise server at HGD. Use Certbot (Let's Encrypt) for HTTPS.
+          Minimum spec: 4 GB RAM, 2 vCPUs, 40 GB SSD.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 10 -->
+    <div class="step priority-low">
+      <div class="step-num">10</div>
+      <div class="step-body">
+        <h4>User Acceptance Testing at HGD</h4>
+        <p>
+          Before final submission, the system should be tested by real staff and patients
+          at Hôpital Général de Douala to confirm it meets their needs and is easy to use.
+        </p>
+        <ul>
+          <li>Run a pilot with a small group of nurses and receptionists</li>
+          <li>Observe and record any usability issues</li>
+          <li>Collect feedback on missing procedures or unclear answers</li>
+          <li>Fix reported issues and add missing content</li>
+          <li>Document the test results for the academic thesis</li>
+        </ul>
+        <div class="tech-note">
+          <strong>Technical:</strong> Prepare a UAT feedback form. Monitor the system logs and analytics
+          during the pilot to identify content gaps automatically. This maps to the SRS acceptance criteria
+          in <code>context/AI_HPS_SRS_v3.1.docx</code>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 6: LAYER-BY-LAYER STATUS TABLE ===== -->
+  <section>
+    <h2 class="section-title">6. Detailed Status by Layer</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Layer / Component</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>PostgreSQL Database</strong></td>
+          <td>17 tables, 5 schemas, full-text search, audit trail</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>schema.sql is 488 lines. Migrations are ready.</td>
+        </tr>
+        <tr>
+          <td><strong>SVC-02 — Auth</strong></td>
+          <td>Login, JWT tokens, 10 roles, lockout, token blacklist</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Runs on port 8010.</td>
+        </tr>
+        <tr>
+          <td><strong>SVC-03 — Procedures</strong></td>
+          <td>CRUD for procedures, approval workflow, versioning</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Runs on port 8011.</td>
+        </tr>
+        <tr>
+          <td><strong>SVC-04 — Notifications</strong></td>
+          <td>Push notifications to mobile app</td>
+          <td><span class="badge badge-todo">Not Built</span></td>
+          <td>Tables exist in DB. Service code not started.</td>
+        </tr>
+        <tr>
+          <td><strong>SVC-05 — Analytics</strong></td>
+          <td>Usage KPIs, content gap tracking, reports</td>
+          <td><span class="badge badge-todo">Not Built</span></td>
+          <td>Tables exist. Agents write events. Service layer missing.</td>
+        </tr>
+        <tr>
+          <td><strong>SVC-06 — Audit</strong></td>
+          <td>Compliance log, RabbitMQ consumer, immutable records</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Runs on port 8014.</td>
+        </tr>
+        <tr>
+          <td><strong>SVC-07 — KB Sync</strong></td>
+          <td>Vector embeddings, semantic search, FAISS index</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Runs on port 8015. Index is empty until Step 1 above is run.</td>
+        </tr>
+        <tr>
+          <td><strong>AGENT-R — Router</strong></td>
+          <td>Emergency detection, language detection, intent classification</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Emergency regex runs before any AI call.</td>
+        </tr>
+        <tr>
+          <td><strong>AGENT-E — Emergency</strong></td>
+          <td>Zero-AI emergency response, &le;3s, Redis-cached</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Fastest path. Never touches the language model.</td>
+        </tr>
+        <tr>
+          <td><strong>AGENT-N — Navigation</strong></td>
+          <td>Department directions, hospital wayfinding</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Uses embeddings to match department names.</td>
+        </tr>
+        <tr>
+          <td><strong>AGENT-C — Conversational</strong></td>
+          <td>Department info, general queries, chatbot session memory</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Session-aware query reformulation.</td>
+        </tr>
+        <tr>
+          <td><strong>AGENT-P — Procedures (RAG)</strong></td>
+          <td>Semantic + full-text search, GPT-4o-mini answers, confidence threshold</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Refuses to answer below 0.40 confidence. Needs PDF ingestion first.</td>
+        </tr>
+        <tr>
+          <td><strong>AGENT-O — Output Formatter</strong></td>
+          <td>5-platform replies: WhatsApp, SMS, USSD, Mobile, Web</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Emergency output bypasses all formatting limits.</td>
+        </tr>
+        <tr>
+          <td><strong>PDF Knowledge Base</strong></td>
+          <td>15 WHO PDFs across 5 departments</td>
+          <td><span class="badge badge-partial">Stored, Not Ingested</span></td>
+          <td>Files present. Ingestion script exists but has not been run.</td>
+        </tr>
+        <tr>
+          <td><strong>Mobile App — Core Screens</strong></td>
+          <td>Login, Home, Chat, Browse, Search, Profile, Notifications</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>Running on mock data. 20 UI components fully built.</td>
+        </tr>
+        <tr>
+          <td><strong>Mobile App — Admin Screens</strong></td>
+          <td>Procedures management, Approvals, Analytics, Audit log</td>
+          <td><span class="badge badge-partial">Built, Needs Data</span></td>
+          <td>UI built. Needs real API + analytics backend.</td>
+        </tr>
+        <tr>
+          <td><strong>Mobile App — API Integration</strong></td>
+          <td>Connecting screens to real backend API</td>
+          <td><span class="badge badge-todo">Not Done</span></td>
+          <td>API client code exists. Screens still use mock imports.</td>
+        </tr>
+        <tr>
+          <td><strong>WhatsApp / SMS / USSD Gateway</strong></td>
+          <td>Receiving messages from public users via telecom</td>
+          <td><span class="badge badge-todo">Not Connected</span></td>
+          <td>AI formats replies for these channels. Gateway not integrated.</td>
+        </tr>
+        <tr>
+          <td><strong>Docker Infrastructure</strong></td>
+          <td>Redis, RabbitMQ, Nginx containers</td>
+          <td><span class="badge badge-done">Complete</span></td>
+          <td>docker-compose.yml is ready. Start with <code>docker-compose up</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Full Stack Integration Test</strong></td>
+          <td>Testing all parts together as one system</td>
+          <td><span class="badge badge-todo">Not Done</span></td>
+          <td>Dependent on Steps 1–3 being completed first.</td>
+        </tr>
+        <tr>
+          <td><strong>Production Deployment</strong></td>
+          <td>Moving from developer laptop to real server</td>
+          <td><span class="badge badge-todo">Not Done</span></td>
+          <td>Docker setup is ready. Server not provisioned.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== SECTION 7: TECHNOLOGY SUMMARY ===== -->
+  <section>
+    <h2 class="section-title">7. Technologies Used</h2>
+
+    <div class="card-grid">
+      <div class="card done">
+        <div class="card-title">Backend Language</div>
+        <p><strong>Python 3.11</strong> — FastAPI framework for building the API services. Chosen for speed, simplicity, and excellent AI library support.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">AI Framework</div>
+        <p><strong>LangGraph + OpenAI GPT-4o-mini</strong> — LangGraph orchestrates the 6 agents in a pipeline. GPT-4o-mini generates answers from retrieved procedures.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">Database</div>
+        <p><strong>PostgreSQL 15</strong> — Stores all users, procedures, audit events, analytics. Includes built-in full-text search.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">Cache</div>
+        <p><strong>Redis 7.2</strong> — Fast in-memory storage for emergency content (pre-loaded for instant replies) and intent caching.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">Message Queue</div>
+        <p><strong>RabbitMQ 3.12</strong> — Handles background processing of audit log events without slowing down the main responses.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">Mobile App</div>
+        <p><strong>Expo (React Native) 56</strong> — Builds one codebase that works on both Android and iOS. The staff app runs on phones and tablets.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">API Gateway</div>
+        <p><strong>Nginx 1.25</strong> — The single secure entry point. All traffic passes through here for authentication checks and rate limiting.</p>
+      </div>
+      <div class="card done">
+        <div class="card-title">Vector Search</div>
+        <p><strong>SentenceTransformers + FAISS</strong> — Converts text into mathematical vectors so the AI can find documents by meaning, not just keywords.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 8: SUMMARY ===== -->
+  <section>
+    <h2 class="section-title">8. Summary</h2>
+
+    <div class="info-box">
+      <strong>For the academic supervisor (Dr. Tabueu Cabrel):</strong>
+      The project has successfully delivered a complete AI agent pipeline (Phase 3), a full authentication and procedure management backend, and a functioning mobile app UI. The remaining work (Steps 1–10 above) is primarily integration, data loading, and delivery-channel wiring — not foundational architecture. The codebase contains approximately 8,000 lines of code across 113 files.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Built</th>
+          <th>Remaining</th>
+          <th>Effort Estimate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend Services</td>
+          <td>5 of 7 services complete</td>
+          <td>SVC-04 Notifications, SVC-05 Analytics</td>
+          <td>~2–3 days each</td>
+        </tr>
+        <tr>
+          <td>AI Agent Pipeline</td>
+          <td>6 of 6 agents complete</td>
+          <td>PDF ingestion to activate the KB</td>
+          <td>~2 hours (run script)</td>
+        </tr>
+        <tr>
+          <td>Mobile App</td>
+          <td>All screens + components built</td>
+          <td>Connect to real API (replace mocks)</td>
+          <td>~3–5 days</td>
+        </tr>
+        <tr>
+          <td>Database</td>
+          <td>Schema complete (17 tables)</td>
+          <td>Seed with real HGD data</td>
+          <td>~1–2 days</td>
+        </tr>
+        <tr>
+          <td>Channels (WhatsApp/SMS/USSD)</td>
+          <td>AI formatting ready</td>
+          <td>Gateway provider integration</td>
+          <td>~3–5 days</td>
+        </tr>
+        <tr>
+          <td>Testing</td>
+          <td>Unit-level code verified</td>
+          <td>Integration tests + UAT at HGD</td>
+          <td>~1–2 weeks</td>
+        </tr>
+        <tr>
+          <td>Deployment</td>
+          <td>Docker config ready</td>
+          <td>Server provisioning + HTTPS</td>
+          <td>~2–3 days</td>
+        </tr>
+        <tr>
+          <td colspan="3"><strong>Estimated total remaining work</strong></td>
+          <td><strong>~4–6 weeks</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr/>
+
+  <p style="font-size:0.87rem; color:#718096; text-align:center;">
+    AI-HPS Project &mdash; Hôpital Général de Douala &mdash; Academic Thesis (IUC) &mdash; Ful Marvel &mdash; 2026
+  </p>
+
+</div>
+
+<footer>
+  AI-HPS Project Status Report &nbsp;|&nbsp; Generated June 9, 2026 &nbsp;|&nbsp; Document: <code>docs/AI-HPS_Project_Status_Report.html</code>
+</footer>
+
+</body>
+</html>
