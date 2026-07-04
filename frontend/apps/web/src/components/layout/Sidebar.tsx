@@ -1,25 +1,46 @@
+import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, FolderOpen, CheckSquare, BarChart2,
-  Shield, Users, Cpu, Bell, LogOut, User,
+  Shield, Users, HeartPulse, Cpu, Bell, LogOut, User, Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 
-const navItems = [
-  { to: '/admin/dashboard',     label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/admin/procedures',    label: 'Procedures',  icon: FolderOpen },
-  { to: '/admin/approvals',     label: 'Approvals',   icon: CheckSquare,  badge: true },
-  { to: '/admin/analytics',     label: 'Analytics',   icon: BarChart2 },
-  { to: '/admin/audit',         label: 'Audit Log',   icon: Shield },
-  { to: '/admin/users',         label: 'Users & Roles', icon: Users },
-  { to: '/admin/ai-monitor',    label: 'AI Monitor',  icon: Cpu },
-  { to: '/admin/notifications', label: 'Notifications', icon: Bell },
+const ADMIN_ROLES = ['super_admin', 'admin']
+
+interface NavItem {
+  to: string
+  label: string
+  icon: React.ElementType
+  badge?: boolean
+}
+
+const adminNavItems: NavItem[] = [
+  { to: '/admin/dashboard',     label: 'Dashboard',      icon: LayoutDashboard },
+  { to: '/admin/procedures',    label: 'Procedures',     icon: FolderOpen },
+  { to: '/admin/assistant',     label: 'AI Assistant',   icon: Sparkles },
+  { to: '/admin/approvals',     label: 'Approvals',      icon: CheckSquare, badge: true },
+  { to: '/admin/analytics',     label: 'Analytics',      icon: BarChart2 },
+  { to: '/admin/audit',         label: 'Audit Log',      icon: Shield },
+  { to: '/admin/staff',         label: 'Hospital Staff', icon: Users },
+  { to: '/admin/patients',      label: 'Patients',       icon: HeartPulse },
+  { to: '/admin/ai-monitor',    label: 'AI Monitor',     icon: Cpu },
+  { to: '/admin/notifications', label: 'Notifications',  icon: Bell },
+]
+
+const staffNavItems: NavItem[] = [
+  { to: '/admin/dashboard',  label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/admin/procedures', label: 'Procedures',   icon: FolderOpen },
+  { to: '/admin/assistant',  label: 'AI Assistant', icon: Sparkles },
 ]
 
 export function Sidebar() {
   const { user, clearAuth } = useAuthStore()
   const navigate = useNavigate()
+
+  const isAdmin = ADMIN_ROLES.includes(user?.role ?? '')
+  const navItems = isAdmin ? adminNavItems : staffNavItems
 
   const handleLogout = () => {
     clearAuth()
@@ -63,6 +84,15 @@ export function Sidebar() {
         ))}
       </nav>
 
+      {/* Role badge for non-admins */}
+      {!isAdmin && (
+        <div className="px-5 py-2 border-t border-[#F1F5F9]">
+          <span className="text-[10px] text-text-sec font-medium capitalize bg-surf-alt px-2 py-1 rounded">
+            {user?.role?.replace(/_/g, ' ') ?? 'Staff'} access
+          </span>
+        </div>
+      )}
+
       {/* User footer */}
       <div className="border-t border-[#CBD5E1] p-4">
         <NavLink
@@ -79,7 +109,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-xs text-text-pri truncate">{user?.full_name ?? 'Staff'}</p>
-            <p className="text-[10px] text-text-sec capitalize truncate">{user?.role?.replace('_', ' ')}</p>
+            <p className="text-[10px] text-text-sec capitalize truncate">{user?.role?.replace(/_/g, ' ')}</p>
           </div>
           <User size={14} />
         </NavLink>

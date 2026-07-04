@@ -36,8 +36,8 @@ export default function PatientProfilePage() {
         <p className="text-sm text-white/70 mt-0.5">
           Patient · ID {user?.id?.slice(-4)?.toUpperCase() ?? '0001'} · HGD
         </p>
-        {user?.department && (
-          <p className="text-xs text-white/60 mt-0.5">{user.department}</p>
+        {user?.department_id && (
+          <p className="text-xs text-white/60 mt-0.5">Dept. {user.department_id.slice(0, 8)}</p>
         )}
       </div>
 

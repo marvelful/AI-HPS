@@ -1,6 +1,6 @@
 """
 AGENT-R — Router & Intent Classifier.
-Pipeline: emergency regex → language detection → GPT-4o-mini intent → routing state.
+Pipeline: emergency regex → language detection → LLM intent (Gemini/Mistral) → routing state.
 Emergency path uses zero LLM calls. Redis caches repeated intents for 60 s.
 """
 import json
@@ -130,36 +130,58 @@ def _llm_intent(query: str) -> str:
     if cached:
         return cached
 
-    api_key = settings.OPENAI_API_KEY
-    if not api_key:
-        result = _rule_based_intent(query)
-        _cache_set(cache_key, result)
-        return result
+    grok_key = settings.XAI_API_KEY
+    gemini_key = settings.GEMINI_API_KEY
 
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": query[:500]},
-            ],
-            response_format={"type": "json_object"},
-            max_tokens=30,
-            temperature=0,
-        )
-        data = json.loads(resp.choices[0].message.content)
-        intent = data.get("intent", "unknown")
-        if intent not in ("navigation", "information", "procedure", "unknown"):
-            intent = "unknown"
-        _cache_set(cache_key, intent)
-        return intent
-    except Exception as exc:
-        print(f"[agent_r] LLM intent failed: {exc}")
-        result = _rule_based_intent(query)
-        _cache_set(cache_key, result)
-        return result
+    # Try Grok (xAI) first
+    if grok_key:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=grok_key, base_url="https://api.x.ai/v1")
+            resp = client.chat.completions.create(
+                model="grok-3",
+                messages=[
+                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "user", "content": query[:500]},
+                ],
+                max_tokens=30,
+                temperature=0,
+            )
+            raw = resp.choices[0].message.content
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.DOTALL)
+            data = json.loads(raw)
+            intent = data.get("intent", "unknown")
+            if intent not in ("navigation", "information", "procedure", "unknown"):
+                intent = "unknown"
+            _cache_set(cache_key, intent)
+            return intent
+        except Exception as exc:
+            print(f"[agent_r] Grok intent failed: {exc}")
+
+    # Fallback to Gemini
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
+            full_prompt = f"{_SYSTEM_PROMPT}\n\n{query[:500]}"
+            resp = model.generate_content(full_prompt, generation_config=genai.types.GenerationConfig(
+                max_output_tokens=30,
+                temperature=0,
+            ))
+            data = json.loads(resp.text)
+            intent = data.get("intent", "unknown")
+            if intent not in ("navigation", "information", "procedure", "unknown"):
+                intent = "unknown"
+            _cache_set(cache_key, intent)
+            return intent
+        except Exception as exc:
+            print(f"[agent_r] Gemini intent failed: {exc}")
+
+    # Rule-based fallback
+    result = _rule_based_intent(query)
+    _cache_set(cache_key, result)
+    return result
 
 
 # ── Agent node ────────────────────────────────────────────────────────────────

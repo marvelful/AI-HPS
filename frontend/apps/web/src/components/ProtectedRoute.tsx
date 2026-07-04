@@ -7,20 +7,21 @@ interface ProtectedRouteProps {
   children: ReactNode
   allowedRoles?: UserRole[]
   redirectTo?: string
+  fallbackTo?: string
 }
 
 export function ProtectedRoute({
   children,
   allowedRoles,
   redirectTo = '/login',
+  fallbackTo = '/login',
 }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuthStore()
 
   if (!isAuthenticated) return <Navigate to={redirectTo} replace />
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    const fallback = user.role === 'patient' ? '/patient/home' : '/admin/dashboard'
-    return <Navigate to={fallback} replace />
+    return <Navigate to={fallbackTo} replace />
   }
 
   return <>{children}</>

@@ -33,8 +33,37 @@ def login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
         access_token=token,
         token_type="bearer",
         expires_in=expire_minutes * 60,
-        user_id=str(user.id),
-        role=user.role,
+        user=schemas.UserResponse.model_validate(user),
+    )
+
+
+@router.post("/request-otp", status_code=202)
+def request_otp(body: schemas.RequestOtpRequest, db: Session = Depends(get_db)):
+    """Send a 6-digit OTP to the given email. Used before patient self-registration."""
+    service.request_otp(db, str(body.email), body.purpose, body.full_name or "")
+    return {"message": "Verification code sent. Please check your email."}
+
+
+@router.post("/register", response_model=schemas.TokenResponse, status_code=201)
+def register_patient(body: schemas.PatientRegisterRequest, db: Session = Depends(get_db)):
+    """Patient self-registration. Requires a valid OTP sent to the same email."""
+    try:
+        user = service.register_patient(db, body)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Registration failed: a conflicting record already exists. Please try again or use a different email.",
+        )
+
+    expire_minutes = service.get_token_expire_minutes(user.role)
+    token, _jti, _exp = service.create_access_token(user, expire_minutes)
+
+    return schemas.TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=expire_minutes * 60,
+        user=schemas.UserResponse.model_validate(user),
     )
 
 
@@ -52,7 +81,7 @@ def logout(
             expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
             service.logout_user(db, jti, user_id, expires_at)
     except JWTError:
-        pass  # Already invalid — silently succeed
+        pass
 
 
 @router.get("/me", response_model=schemas.UserResponse)
@@ -130,7 +159,6 @@ def validate_token(
     response: Response,
     current_user: User = Depends(get_current_user),
 ):
-    """Internal endpoint used by Nginx auth_request. Returns 200 + user headers."""
     response.headers["X-User-ID"] = str(current_user.id)
     response.headers["X-User-Role"] = current_user.role
 

@@ -40,7 +40,7 @@ export default function RegisterPage() {
         phone:         data.phone,
         date_of_birth: data.date_of_birth,
         password:      data.password,
-        role:          'patient',
+        otp_code:      '',
       })
       setAuth(res.user, res.access_token)
       navigate('/patient/home')

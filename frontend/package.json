@@ -7,6 +7,8 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
+    "dev:staff": "npm run dev:staff --workspace=apps/web",
+    "dev:patient": "npm run dev:patient --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
     "preview": "npm run preview --workspace=apps/web"
   }

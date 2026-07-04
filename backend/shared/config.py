@@ -19,11 +19,23 @@ class Settings(BaseSettings):
     LOCKOUT_MINUTES: int = 30
 
     OPENAI_API_KEY: str = ""
+    XAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    MISTRAL_API_KEY: str = ""
     PHASE1_DEPARTMENTS: str = "Emergency,Blood Bank,ICU,Surgery,Maternity,Infection Control"
+
+    # Email / SMTP
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    EMAIL_FROM: str = ""
+    EMAIL_FROM_NAME: str = "AI-HPS"
+    EMAIL_PASSWORD: str = ""
+    OTP_EXPIRE_MINUTES: int = 10
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 @lru_cache()

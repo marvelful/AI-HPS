@@ -1,5 +1,7 @@
 version: "3.9"
 
+# ── Infrastructure ─────────────────────────────────────────────────────────────
+
 services:
 
   redis:
@@ -11,6 +13,11 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
@@ -24,6 +31,151 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+# ── Python microservices ────────────────────────────────────────────────────────
+# All services share one image built from backend/Dockerfile.
+# host.docker.internal resolves to the Windows host running PostgreSQL.
+
+  svc02_auth:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc02_auth
+    command: uvicorn services.svc02_auth.main:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - "8002:8002"
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    volumes:
+      - ../backend:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc03_procedures:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc03_procedures
+    command: uvicorn services.svc03_procedures.main:app --host 0.0.0.0 --port 8003
+    ports:
+      - "8003:8003"
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc05_analytics:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc05_analytics
+    command: uvicorn services.svc05_analytics.main:app --host 0.0.0.0 --port 8005
+    ports:
+      - "8005:8005"
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc06_audit:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc06_audit
+    command: uvicorn services.svc06_audit.main:app --host 0.0.0.0 --port 8006
+    ports:
+      - "8006:8006"
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc07_kb_sync:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc07_kb_sync
+    command: uvicorn services.svc07_kb_sync.main:app --host 0.0.0.0 --port 8007
+    ports:
+      - "8007:8007"
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    volumes:
+      - ../backend/kb_index:/app/kb_index
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc_agents:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc_agents
+    command: uvicorn agents.main:app --host 0.0.0.0 --port 8020
+    ports:
+      - "8020:8020"
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    volumes:
+      - ../backend/kb_index:/app/kb_index
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      svc07_kb_sync:
+        condition: service_started
+    restart: unless-stopped
 
   nginx:
     image: nginx:1.25-alpine
@@ -32,12 +184,13 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    # host.docker.internal resolves to the Windows host automatically on Docker Desktop
-    # The extra_hosts entry below is a no-op on Windows but needed on Linux Docker
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
-      - rabbitmq
+      - svc02_auth
+      - svc03_procedures
+      - svc05_analytics
+      - svc06_audit
+      - svc07_kb_sync
+      - svc_agents
     restart: unless-stopped
 
 volumes:

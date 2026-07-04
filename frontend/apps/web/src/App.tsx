@@ -2,11 +2,9 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { PatientLayout } from '@/pages/patient/PatientLayout'
 
-import LandingPage        from '@/pages/LandingPage'
-import LoginPage          from '@/pages/auth/LoginPage'
-import RegisterPage       from '@/pages/auth/RegisterPage'
+import StaffLandingPage from '@/pages/staff/StaffLandingPage'
+import StaffLoginPage   from '@/pages/staff/StaffLoginPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 
 import DashboardPage      from '@/pages/admin/DashboardPage'
@@ -15,30 +13,32 @@ import ApprovalsPage      from '@/pages/admin/ApprovalsPage'
 import AnalyticsPage      from '@/pages/admin/AnalyticsPage'
 import AuditLogPage       from '@/pages/admin/AuditLogPage'
 import UsersPage          from '@/pages/admin/UsersPage'
+import StaffPage          from '@/pages/admin/StaffPage'
+import PatientsPage       from '@/pages/admin/PatientsPage'
 import AIMonitorPage      from '@/pages/admin/AIMonitorPage'
 import NotificationsPage  from '@/pages/admin/NotificationsPage'
+import AdminAssistantPage from '@/pages/admin/AdminAssistantPage'
 
-import PatientHomePage        from '@/pages/patient/PatientHomePage'
-import PatientProceduresPage  from '@/pages/patient/PatientProceduresPage'
-import PatientDepartmentsPage from '@/pages/patient/PatientDepartmentsPage'
-import PatientProfilePage     from '@/pages/patient/PatientProfilePage'
-import AssistantPage          from '@/pages/patient/AssistantPage'
-import ProcedureDetailPage    from '@/pages/patient/ProcedureDetailPage'
+// All roles that may access the staff/admin portal
+const ALL_STAFF_ROLES = [
+  'super_admin', 'admin', 'department_admin', 'department_head',
+  'doctor', 'clinician', 'nurse', 'pharmacist',
+  'lab_technician', 'radiologist', 'infection_control_officer', 'staff',
+] as const
 
-const STAFF_ROLES = ['super_admin', 'admin', 'department_head', 'clinician', 'nurse'] as const
+// Only admins may access sensitive management pages
+const ADMIN_ONLY_ROLES = ['super_admin', 'admin'] as const
 
 const router = createBrowserRouter([
   /* ─── Public ─── */
-  { path: '/', element: <LandingPage /> },
+  { path: '/', element: <StaffLandingPage /> },
 
   /* ─── Auth ─── */
   {
     element: <AuthLayout />,
     children: [
-      { path: 'login',            element: <LoginPage /> },
-      { path: 'forgot-password',  element: <ForgotPasswordPage /> },
-      { path: 'patient/login',    element: <LoginPage /> },
-      { path: 'patient/register', element: <RegisterPage /> },
+      { path: 'login',           element: <StaffLoginPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
     ],
   },
 
@@ -46,39 +46,77 @@ const router = createBrowserRouter([
   {
     path: 'admin',
     element: (
-      <ProtectedRoute allowedRoles={[...STAFF_ROLES]}>
+      <ProtectedRoute allowedRoles={[...ALL_STAFF_ROLES]} fallbackTo="/login">
         <AppLayout />
       </ProtectedRoute>
     ),
     children: [
-      { index: true,          element: <Navigate to="dashboard" replace /> },
-      { path: 'dashboard',    element: <DashboardPage /> },
-      { path: 'procedures',   element: <ProceduresPage /> },
-      { path: 'approvals',    element: <ApprovalsPage /> },
-      { path: 'analytics',    element: <AnalyticsPage /> },
-      { path: 'audit',        element: <AuditLogPage /> },
-      { path: 'users',        element: <UsersPage /> },
-      { path: 'ai-monitor',   element: <AIMonitorPage /> },
-      { path: 'notifications',element: <NotificationsPage /> },
-    ],
-  },
+      { index: true,           element: <Navigate to="dashboard" replace /> },
+      { path: 'dashboard',     element: <DashboardPage /> },
+      { path: 'procedures',    element: <ProceduresPage /> },
+      { path: 'assistant',     element: <AdminAssistantPage /> },
 
-  /* ─── Patient mobile portal ─── */
-  {
-    path: 'patient',
-    element: (
-      <ProtectedRoute allowedRoles={['patient']}>
-        <PatientLayout />
-      </ProtectedRoute>
-    ),
-    children: [
-      { index: true,                 element: <Navigate to="home" replace /> },
-      { path: 'home',                element: <PatientHomePage /> },
-      { path: 'procedures',          element: <PatientProceduresPage /> },
-      { path: 'departments',         element: <PatientDepartmentsPage /> },
-      { path: 'profile',             element: <PatientProfilePage /> },
-      { path: 'assistant',           element: <AssistantPage /> },
-      { path: 'procedure/:id',       element: <ProcedureDetailPage /> },
+      // Admin-only pages — non-admins see a redirect to dashboard
+      {
+        path: 'approvals',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES, 'department_head']} fallbackTo="/admin/dashboard">
+            <ApprovalsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'analytics',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES]} fallbackTo="/admin/dashboard">
+            <AnalyticsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'audit',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES]} fallbackTo="/admin/dashboard">
+            <AuditLogPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES]} fallbackTo="/admin/dashboard">
+            <UsersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'staff',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES]} fallbackTo="/admin/dashboard">
+            <StaffPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'patients',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES]} fallbackTo="/admin/dashboard">
+            <PatientsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'ai-monitor',
+        element: (
+          <ProtectedRoute allowedRoles={[...ADMIN_ONLY_ROLES]} fallbackTo="/admin/dashboard">
+            <AIMonitorPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'notifications',
+        element: <NotificationsPage />,
+      },
     ],
   },
 

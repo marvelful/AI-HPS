@@ -19,10 +19,14 @@ redis==5.0.4
 aio-pika==9.4.1
 pika==1.3.2
 
-# AI / LangGraph (install now, wire up later)
+# AI / LangGraph
 langgraph==0.1.5
 langchain-openai==0.1.8
 openai==1.30.1
+
+# Alternative LLM providers
+google-generativeai>=0.8.0
+mistralai>=1.0.0
 
 # Validation and config
 pydantic==2.7.1

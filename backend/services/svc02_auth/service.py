@@ -1,5 +1,6 @@
+import random
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional
 
 import bcrypt
@@ -10,8 +11,13 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from shared.config import get_settings
-from shared.models.auth import LockoutRecord, TokenBlacklist, User
-from services.svc02_auth.schemas import AdminResetPasswordRequest, CreateUserRequest, UpdateUserRequest
+from shared.models.auth import LockoutRecord, OtpCode, TokenBlacklist, User
+from services.svc02_auth.schemas import (
+    AdminResetPasswordRequest,
+    CreateUserRequest,
+    PatientRegisterRequest,
+    UpdateUserRequest,
+)
 
 settings = get_settings()
 
@@ -95,7 +101,7 @@ def logout_user(db: Session, jti: str, user_id: str, expires_at: datetime) -> No
         ttl = max(1, int((expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).total_seconds()))
         r.setex(f"blacklist:token:{jti}", ttl, "1")
     except Exception:
-        pass  # DB is authoritative; Redis is a fast-path cache
+        pass
 
 
 def is_token_revoked(db: Session, jti: str) -> bool:
@@ -189,3 +195,92 @@ def change_password(db: Session, user: User, current_password: str, new_password
     user.password_hash = hash_password(new_password)
     db.commit()
     return True, ""
+
+
+# ── OTP ───────────────────────────────────────────────────────────────────────
+
+def _generate_otp() -> str:
+    return f"{random.randint(0, 999999):06d}"
+
+
+def request_otp(db: Session, email: str, purpose: str, full_name: str = "") -> None:
+    from services.svc02_auth.email_service import send_otp_email
+
+    # Invalidate any existing unused OTPs for this email+purpose
+    db.query(OtpCode).filter(
+        OtpCode.email == email,
+        OtpCode.purpose == purpose,
+        OtpCode.used == False,  # noqa: E712
+    ).update({"used": True})
+    db.commit()
+
+    code = _generate_otp()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
+    otp = OtpCode(email=email, code=code, purpose=purpose, expires_at=expires_at)
+    db.add(otp)
+    db.commit()
+
+    try:
+        send_otp_email(to_email=email, otp_code=code, full_name=full_name)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to send OTP email. Please try again. ({exc})",
+        )
+
+
+def verify_otp(db: Session, email: str, code: str, purpose: str) -> bool:
+    now = datetime.now(timezone.utc)
+    otp: Optional[OtpCode] = (
+        db.query(OtpCode)
+        .filter(
+            OtpCode.email == email,
+            OtpCode.code == code,
+            OtpCode.purpose == purpose,
+            OtpCode.used == False,  # noqa: E712
+            OtpCode.expires_at > now,
+        )
+        .first()
+    )
+    if not otp:
+        return False
+    otp.used = True
+    db.commit()
+    return True
+
+
+def register_patient(db: Session, data: PatientRegisterRequest) -> User:
+    # Check email before consuming the OTP so the OTP remains usable on conflict
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    if not verify_otp(db, data.email, data.otp_code, "register"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code. Please request a new one.",
+        )
+
+    dob: Optional[date] = None
+    if data.date_of_birth:
+        try:
+            dob = date.fromisoformat(data.date_of_birth)
+        except ValueError:
+            pass
+
+    user = User(
+        email=data.email,
+        full_name=data.full_name,
+        password_hash=hash_password(data.password),
+        role="patient",
+        phone=data.phone,
+        date_of_birth=dob,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

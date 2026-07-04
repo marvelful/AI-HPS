@@ -1,0 +1,447 @@
+For a protocol that will be submitted to hospital management, ethics committee, or academic supervisors, I would structure it as follows:
+
+# PROTOCOL FOR ACCESSING AND ANALYZING HOSPITAL OPERATIONAL DOCUMENTS FOR THE DEVELOPMENT OF AN ARTIFICIAL INTELLIGENCE HOSPITAL PROCEDURE SYSTEM (AI-HPS) AT HÔPITAL GÉNÉRAL DE DOUALA
+
+---
+
+# COVER PAGE
+
+* Title
+* Student Name
+* Registration Number
+* Department
+* Institution
+* Supervisor
+* Hospital Partner
+* Date
+
+---
+
+# TABLE OF CONTENTS
+
+---
+
+# LIST OF ABBREVIATIONS
+
+Examples:
+
+* AI – Artificial Intelligence
+* AI-HPS – Artificial Intelligence Hospital Procedure System
+* SOP – Standard Operating Procedure
+* RAG – Retrieval-Augmented Generation
+* NLP – Natural Language Processing
+* LLM – Large Language Model
+* HGD – Hôpital Général de Douala
+* WHO – World Health Organization
+* ICU – Intensive Care Unit
+
+---
+
+# ABSTRACT
+
+### Background
+
+Brief description of the problem.
+
+### Objective
+
+Main objective of the study.
+
+### Methods
+
+Document review, interviews, administrative data collection.
+
+### Expected Outcome
+
+Development of an AI-powered hospital information and procedure system.
+
+Keywords
+
+AI, RAG, Hospital Information Systems, SOPs, Digital Health, Healthcare AI
+
+---
+
+# CHAPTER I: INTRODUCTION
+
+## 1.1 Background
+
+### 1.1.1 Artificial Intelligence in Healthcare
+
+### 1.1.2 Hospital Information Systems
+
+### 1.1.3 Retrieval-Augmented Generation (RAG)
+
+### 1.1.4 Clinical Decision Support Systems
+
+### 1.1.5 Hospital Navigation Systems
+
+### 1.1.6 Digital Transformation in Healthcare
+
+### 1.1.7 Need for Hospital-Specific Knowledge Bases
+
+---
+
+## 1.2 Problem Statement
+
+Explain:
+
+* Difficulty accessing hospital procedures
+* Fragmented information
+* Time lost searching for protocols
+* Difficulty navigating hospital services
+* Need for locally relevant AI systems
+
+---
+
+## 1.3 Justification of the Study
+
+### Institutional Benefits
+
+* Improved information accessibility
+* Improved staff efficiency
+* Better patient orientation
+
+### Academic Benefits
+
+* Demonstrates AI application in healthcare
+
+### Technological Benefits
+
+* Supports digital transformation
+
+---
+
+## 1.4 Research Questions
+
+### Main Question
+
+How can hospital operational documents be utilized to develop an AI-powered Hospital Procedure System?
+
+### Specific Questions
+
+1. What hospital operational data are required?
+2. What SOPs and protocols can be integrated?
+3. How can hospital navigation information be structured?
+4. What security measures are needed for document management?
+
+---
+
+## 1.5 Objectives
+
+### General Objective
+
+To develop a structured hospital knowledge base for an AI Hospital Procedure System using hospital operational documents and procedural information.
+
+### Specific Objectives
+
+1. To collect hospital navigation information.
+2. To collect departmental information and service descriptions.
+3. To obtain emergency response procedures.
+4. To collect clinical SOPs and protocols.
+5. To construct a RAG-based hospital knowledge repository.
+
+---
+
+# CHAPTER II: LITERATURE REVIEW
+
+## 2.1 Conceptual Review
+
+### 2.1.1 Artificial Intelligence in Healthcare
+
+### 2.1.2 Large Language Models
+
+### 2.1.3 Retrieval-Augmented Generation
+
+### 2.1.4 Hospital Knowledge Management Systems
+
+### 2.1.5 Clinical Decision Support Systems
+
+### 2.1.6 Digital Health and Smart Hospitals
+
+### 2.1.7 Natural Language Processing in Healthcare
+
+### 2.1.8 Healthcare Data Governance
+
+### 2.1.9 Hospital Navigation Systems
+
+### 2.1.10 Standard Operating Procedures in Healthcare
+
+---
+
+## 2.2 Theoretical Review
+
+### 2.2.1 Socio-Technical Systems Theory
+
+### 2.2.2 Technology Acceptance Model (TAM)
+
+### 2.2.3 Diffusion of Innovation Theory
+
+### 2.2.4 Knowledge Management Theory
+
+---
+
+## 2.3 Empirical Review
+
+Organize according to objectives:
+
+### Studies on AI in Hospitals
+
+### Studies on Clinical Decision Support Systems
+
+### Studies on RAG Systems
+
+### Studies on Hospital Navigation Technologies
+
+### Studies on Knowledge Management in Healthcare
+
+---
+
+## 2.4 Conceptual Framework
+
+Diagram showing:
+
+Hospital Documents
+↓
+Data Collection
+↓
+Knowledge Base Construction
+↓
+Vector Database
+↓
+RAG Pipeline
+↓
+AI-HPS
+↓
+Staff and Patient Support
+
+---
+
+# CHAPTER III: METHODOLOGY
+
+## 3.1 Study Type
+
+Descriptive and developmental research design.
+
+---
+
+## 3.2 Study Area
+
+Description of Hôpital Général de Douala.
+
+---
+
+## 3.3 Study Duration
+
+Example:
+
+June 2026 – September 2026
+
+---
+
+## 3.4 Target Population
+
+* Department Heads
+* Quality Assurance Personnel
+* IT Staff
+* Administrative Staff
+* Medical Records Personnel
+* SOP Custodians
+
+---
+
+## 3.5 Selection Criteria
+
+### Inclusion Criteria
+
+### Exclusion Criteria
+
+---
+
+## 3.6 Data Sources
+
+### Primary Sources
+
+* Interviews
+* Key informants
+
+### Secondary Sources
+
+* SOPs
+* Clinical protocols
+* Policy documents
+* Floor plans
+* Department records
+
+---
+
+## 3.7 Data Collection Methods
+
+### 3.7.1 Document Review
+
+Review of:
+
+* SOPs
+* Clinical Protocols
+* Emergency Procedures
+* Admission Procedures
+* Discharge Procedures
+* Infection Control Policies
+
+---
+
+### 3.7.2 Key Informant Interviews
+
+Interview:
+
+* Department heads
+* IT staff
+* Administrators
+
+---
+
+### 3.7.3 Administrative Data Collection
+
+#### Navigation Data
+
+* Floor plans
+* Entry points
+* Direction routes
+
+#### Department Information
+
+* Locations
+* Services
+* Contact details
+
+---
+
+## 3.8 Data Collection Tools
+
+### Document Review Checklist
+
+### Interview Guide
+
+### Department Information Collection Form
+
+### SOP Inventory Form
+
+---
+
+## 3.9 Data Management
+
+### Document Digitization
+
+### Document Classification
+
+### Metadata Extraction
+
+### Version Control
+
+### Secure Storage
+
+---
+
+## 3.10 Data Analysis
+
+### Qualitative Analysis
+
+Content analysis of:
+
+* SOPs
+* Policies
+* Procedures
+
+---
+
+### Knowledge Engineering Process
+
+1. Document cleaning
+2. Text extraction
+3. Chunking
+4. Embedding generation
+5. Vector indexing
+6. RAG integration
+
+---
+
+## 3.11 Expected System Architecture
+
+### Data Layer
+
+Hospital Documents
+
+### Knowledge Layer
+
+Vector Database
+
+### AI Layer
+
+RAG Pipeline
+
+### User Layer
+
+* Patients
+* Clinical Staff
+* Administrators
+
+---
+
+## 3.12 Ethical Considerations
+
+### Institutional Approval
+
+### Informed Consent
+
+### Confidentiality
+
+### Data Security
+
+### Access Control
+
+### Intellectual Property Protection
+
+### Restricted Use of Documents
+
+### No Patient-Level Data Collection
+
+This section should strongly emphasize that:
+
+> No patient records, medical histories, laboratory results, or personally identifiable information will be collected. Only institutional operational documents, approved procedures, and administrative information required for system development will be accessed.
+
+---
+
+# CHAPTER IV: EXPECTED RESULTS
+
+## 4.1 Hospital Knowledge Repository
+
+## 4.2 AI-HPS Prototype
+
+## 4.3 SOP Knowledge Base
+
+## 4.4 Navigation Knowledge Base
+
+## 4.5 Administrative Information Repository
+
+---
+
+# REFERENCES
+
+(Vancouver style if using the template)
+
+---
+
+# APPENDICES
+
+### Appendix I: Authorization Letter
+
+### Appendix II: Interview Guide
+
+### Appendix III: SOP Collection Checklist
+
+### Appendix IV: Department Information Collection Form
+
+### Appendix V: Consent Form
+
+### Appendix VI: Data Request Form
+
+(The document you created requesting navigation data, SOPs, emergency protocols, departmental information, etc.)

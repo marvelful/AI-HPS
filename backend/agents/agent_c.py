@@ -3,7 +3,7 @@ AGENT-C — Conversational Agent + Department Information Retrieval.
 
 Two responsibilities (FR-C-01–08, FR-DI-01–05):
   1. information intent → direct dept DB lookup (no LLM)
-  2. chatbot_mode=True → load Redis session, GPT-4o-mini reformulation,
+  2. chatbot_mode=True → load Redis session, LLM reformulation (Gemini/Mistral),
      save history, pass reformulated_query to AGENT-P
 """
 import json
@@ -67,28 +67,58 @@ _REFORMULATION_PROMPT = (
 )
 
 
+def _extract_json(text: str) -> dict:
+    """Strip markdown fences then parse JSON; raise on failure."""
+    import re as _re
+    text = _re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=_re.DOTALL)
+    return json.loads(text)
+
+
 def _reformulate(query: str, history: list) -> tuple[str, float]:
-    api_key = settings.OPENAI_API_KEY
-    if not api_key:
-        return query, 1.0
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        messages = [{"role": "system", "content": _REFORMULATION_PROMPT}]
-        messages.extend(history[-6:])  # last 3 turns for context
-        messages.append({"role": "user", "content": query})
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            response_format={"type": "json_object"},
-            max_tokens=120,
-            temperature=0,
-        )
-        data = json.loads(resp.choices[0].message.content)
-        return data.get("reformulated_query", query), float(data.get("confidence", 1.0))
-    except Exception as exc:
-        print(f"[agent_c] Reformulation failed: {exc}")
-        return query, 1.0
+    grok_key = settings.XAI_API_KEY
+    gemini_key = settings.GEMINI_API_KEY
+
+    chat_messages = [{"role": "system", "content": _REFORMULATION_PROMPT}]
+    chat_messages.extend(history[-6:])
+    chat_messages.append({"role": "user", "content": query})
+
+    # Try Grok (xAI) first
+    if grok_key:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=grok_key, base_url="https://api.x.ai/v1")
+            resp = client.chat.completions.create(
+                model="grok-3",
+                messages=chat_messages,
+                max_tokens=120,
+                temperature=0,
+            )
+            data = _extract_json(resp.choices[0].message.content)
+            return data.get("reformulated_query", query), float(data.get("confidence", 1.0))
+        except Exception as exc:
+            print(f"[agent_c] Grok reformulation failed: {exc}")
+
+    # Fallback to Gemini
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel(
+                "gemini-1.5-flash",
+                generation_config={"response_mime_type": "application/json"},
+            )
+            full_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in chat_messages])
+            resp = model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(max_output_tokens=120, temperature=0),
+            )
+            data = _extract_json(resp.text)
+            return data.get("reformulated_query", query), float(data.get("confidence", 1.0))
+        except Exception as exc:
+            print(f"[agent_c] Gemini reformulation failed: {exc}")
+
+    # Fallback to original query
+    return query, 1.0
 
 
 _CLARIFY = {

@@ -1,14 +1,16 @@
 """
-AGENT-P — Procedure Intelligence Agent (RAG + internal filtering + grounded generation).
+AGENT-P — Procedure Intelligence Agent.
 
 Hard constraints:
   - Internal content filters applied before every retrieval (stream_target, role, status)
   - Similarity threshold 0.40: no answer generated below it
-  - GPT-4o-mini grounds output strictly in retrieved content
+  - LLM (Gemini/Mistral) grounds output strictly in retrieved content
   - Stream A: no role filter; Stream B: applicable_roles filter applied
 """
 import json
 import re
+import threading
+from datetime import datetime, timezone
 from typing import Optional
 
 from agents.state import AIHPSState
@@ -152,8 +154,15 @@ _PROMPT_B = (
 )
 
 
+def _extract_json(text: str) -> dict:
+    """Strip markdown fences then parse JSON; raise on failure."""
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
+    return json.loads(text)
+
+
 def _generate(query: str, chunks: list[dict], stream: str, language: str) -> dict:
-    api_key = settings.OPENAI_API_KEY
+    grok_key = settings.XAI_API_KEY
+    gemini_key = settings.GEMINI_API_KEY
     system = (_PROMPT_B if stream == "B" else _PROMPT_A).format(language=language)
 
     context = "\n\n---\n\n".join(
@@ -163,35 +172,52 @@ def _generate(query: str, chunks: list[dict], stream: str, language: str) -> dic
     )
     user_msg = f"Query: {query}\n\nRetrieved content:\n{context[:4000]}"
 
-    if not api_key:
-        # Raw content fallback
-        top = chunks[0]["meta"]
-        return {
-            "disclaimer": "AI generation unavailable. Raw content shown.",
-            "summary": (top.get("chunk_text") or top.get("content") or "")[:600],
-        }
+    last_error = "No LLM API key configured."
 
-    try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_msg},
-            ],
-            response_format={"type": "json_object"},
-            max_tokens=1200,
-            temperature=0,
-        )
-        return json.loads(resp.choices[0].message.content)
-    except Exception as exc:
-        print(f"[agent_p] LLM generation error: {exc}")
-        top = chunks[0]["meta"]
-        return {
-            "disclaimer": "AI generation temporarily unavailable.",
-            "summary": (top.get("chunk_text") or top.get("content") or "")[:600],
-        }
+    # Try Grok (xAI) first
+    if grok_key:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=grok_key, base_url="https://api.x.ai/v1")
+            resp = client.chat.completions.create(
+                model="grok-3",
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_msg},
+                ],
+                max_tokens=1200,
+                temperature=0,
+            )
+            return _extract_json(resp.choices[0].message.content)
+        except Exception as exc:
+            last_error = f"Grok: {exc}"
+            print(f"[agent_p] Grok generation error: {exc}")
+
+    # Fallback to Gemini
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel(
+                "gemini-1.5-flash",
+                generation_config={"response_mime_type": "application/json"},
+            )
+            full_prompt = f"{system}\n\n{user_msg}"
+            resp = model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(max_output_tokens=1200, temperature=0),
+            )
+            return _extract_json(resp.text)
+        except Exception as exc:
+            last_error = f"Gemini: {exc}"
+            print(f"[agent_p] Gemini generation error: {exc}")
+
+    # Raw content fallback — surface the real error so it's visible in the response
+    top = chunks[0]["meta"]
+    return {
+        "disclaimer": f"AI generation unavailable — {last_error}",
+        "summary": (top.get("chunk_text") or top.get("content") or "")[:600],
+    }
 
 
 # ── Agent node ────────────────────────────────────────────────────────────────
@@ -200,6 +226,30 @@ _NO_RESULT = {
     "EN": "No matching procedure found. Please consult a healthcare professional or contact the department.",
     "FR": "Aucune procédure trouvée. Veuillez consulter un professionnel de santé ou contacter le département.",
 }
+
+
+# ── Content gap tracker ───────────────────────────────────────────────────────
+
+def _write_gap(query: str) -> None:
+    from shared.models.analytics import ContentGap
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        existing = db.query(ContentGap).filter(ContentGap.query == query).first()
+        if existing:
+            existing.occurrence_count += 1
+            existing.last_seen = now
+        else:
+            db.add(ContentGap(query=query, occurrence_count=1, first_seen=now, last_seen=now))
+        db.commit()
+    except Exception as exc:
+        print(f"[agent_p] Content gap log failed (non-fatal): {exc}")
+    finally:
+        db.close()
+
+
+def _log_content_gap(query: str) -> None:
+    threading.Thread(target=_write_gap, args=(query[:500],), daemon=True).start()
 
 
 def agent_p(state: AIHPSState) -> dict:
@@ -214,6 +264,7 @@ def agent_p(state: AIHPSState) -> dict:
 
     # Hard threshold check
     if not top_chunks or top_chunks[0]["score"] < _THRESHOLD:
+        _log_content_gap(query)
         return {
             "procedure_result": {
                 "found": False,

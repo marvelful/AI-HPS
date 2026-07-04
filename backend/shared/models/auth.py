@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, Integer, DateTime, Text, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Boolean, Integer, DateTime, Text, ForeignKey, Date
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from shared.database import Base
 
@@ -21,6 +21,8 @@ class User(Base):
         ForeignKey("aihps_procedures.departments.id", ondelete="SET NULL"),
         nullable=True,
     )
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    date_of_birth: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     lockout_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -55,3 +57,16 @@ class TokenBlacklist(Base):
     )
     revoked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class OtpCode(Base):
+    __tablename__ = "otp_codes"
+    __table_args__ = {"schema": "aihps_auth"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(20), nullable=False, default="register")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)

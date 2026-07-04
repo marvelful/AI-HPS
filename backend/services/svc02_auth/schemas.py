@@ -1,25 +1,19 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
+from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr, field_validator
 
 VALID_ROLES = {
-    "super_admin", "admin", "department_admin",
-    "doctor", "nurse", "pharmacist", "lab_technician",
+    "super_admin", "admin", "department_admin", "department_head",
+    "doctor", "clinician", "nurse", "pharmacist", "lab_technician",
     "radiologist", "infection_control_officer", "staff",
+    "patient",
 }
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user_id: str
-    role: str
 
 
 class UserResponse(BaseModel):
@@ -29,11 +23,20 @@ class UserResponse(BaseModel):
     role: str
     employee_id: str | None
     department_id: uuid.UUID | None
+    phone: str | None = None
+    date_of_birth: date | None = None
     is_active: bool
     last_login: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserResponse
 
 
 class CreateUserRequest(BaseModel):
@@ -57,6 +60,41 @@ class CreateUserRequest(BaseModel):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
         return v
+
+
+class PatientRegisterRequest(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str
+    otp_code: str
+    phone: Optional[str] = None
+    date_of_birth: Optional[str] = None  # accepts "YYYY-MM-DD"
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+    @field_validator("otp_code")
+    @classmethod
+    def validate_otp(cls, v: str) -> str:
+        if not v.strip().isdigit() or len(v.strip()) != 6:
+            raise ValueError("OTP must be a 6-digit number")
+        return v.strip()
+
+
+class RequestOtpRequest(BaseModel):
+    email: EmailStr
+    purpose: Literal["register", "reset_password"] = "register"
+    full_name: Optional[str] = None
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    code: str
+    purpose: Literal["register", "reset_password"] = "register"
 
 
 class ChangePasswordRequest(BaseModel):

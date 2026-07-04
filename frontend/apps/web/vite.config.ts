@@ -10,6 +10,16 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 3002,
+    proxy: {
+      '/api/pipeline': {
+        target: 'http://localhost:8020',
+        rewrite: (path) => path.replace(/^\/api\/pipeline/, '/pipeline'),
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    outDir: 'dist/staff',
   },
 })

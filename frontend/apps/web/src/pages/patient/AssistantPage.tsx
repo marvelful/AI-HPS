@@ -1,52 +1,71 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles } from 'lucide-react'
+import { Send, Sparkles, AlertTriangle } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
+import { pipelineApi, type PipelineQueryResponse } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth.store'
 
 interface Message {
   id: string
   role: 'user' | 'ai'
   text: string
   time: string
-  confidence?: number
-  ref?: string
+  isEmergency?: boolean
+  hadResult?: boolean
 }
 
 const SUGGESTED = ['Visiting hours', 'Find pediatrics', 'Pre-op fasting']
 
-const MOCK_ANSWERS: Record<string, { text: string; confidence: number; ref: string }> = {
-  default: {
-    text: 'Based on HGD protocols, I can help you with that. For clinical use, always verify with a senior clinician before proceeding. Would you like me to show the full procedure steps?',
-    confidence: 94,
-    ref: 'HGD-GEN-001',
-  },
-  'visiting hours': {
-    text: 'Visiting hours at HGD are:\n• General wards: 12:00–14:00 and 17:00–19:00\n• ICU: Family visits by appointment only\n• Maternity: 10:00–12:00 and 16:00–18:00\n\nPlease check with the nursing desk for any changes.',
-    confidence: 98,
-    ref: 'HGD-ADM-012',
-  },
-  'find pediatrics': {
-    text: 'The Pediatrics department is located on the 3rd Floor, Wing A. From the main entrance, take the elevator to level 3, turn left, and follow the blue signs.',
-    confidence: 99,
-    ref: 'HGD-MAP-031',
-  },
-  'pre-op fasting': {
-    text: 'Standard pre-operative fasting guidelines at HGD:\n• Solid food: Nothing after midnight before surgery\n• Clear fluids: Stop 2 hours before scheduled time\n• Medications: Take with a small sip of water unless instructed otherwise\n\nAlways confirm with your surgeon.',
-    confidence: 97,
-    ref: 'HGD-SURG-008',
-  },
-  'blood test': {
-    text: 'Blood tests at HGD are done at the Laboratory on Basement 1. Walk-in hours are 07:00–15:00 Monday to Saturday. For urgent tests, present at the Emergency lab (Ground Floor) at any time.',
-    confidence: 98,
-    ref: 'HGD-LAB-051',
-  },
-}
+function formatOutput(res: PipelineQueryResponse): { text: string; isEmergency: boolean } {
+  const { output, is_emergency, had_result, error } = res
 
-function getMockAnswer(query: string) {
-  const q = query.toLowerCase()
-  for (const key of Object.keys(MOCK_ANSWERS)) {
-    if (key !== 'default' && q.includes(key)) return MOCK_ANSWERS[key]
+  if (error) return { text: `Something went wrong: ${error}`, isEmergency: false }
+
+  if (is_emergency) {
+    const msg = typeof output === 'string'
+      ? output
+      : (output?.message ?? 'Emergency detected. Please go to the Emergency department immediately or call for help.')
+    return { text: msg, isEmergency: true }
   }
-  return MOCK_ANSWERS.default
+
+  if (!had_result || !output) {
+    return {
+      text: 'No information found for your query. Please try rephrasing your question or ask a member of hospital staff for assistance.',
+      isEmergency: false,
+    }
+  }
+
+  if (typeof output === 'string') return { text: output, isEmergency: false }
+
+  // navigation / dept info — has .found
+  if (output.found === false) {
+    return { text: output.message ?? 'Department not found. Please contact the main reception.', isEmergency: false }
+  }
+  if (output.found === true) {
+    let text = output.name ? `**${output.name}**\n` : ''
+    if (output.description) text += `\n${output.description}\n`
+    if (output.location)    text += `\nLocation: ${output.location}`
+    if (output.phone)       text += `\nPhone: ${output.phone}`
+    if (output.hours)       text += `\nHours: ${output.hours}`
+    return { text: text.trim() || (output.message ?? ''), isEmergency: false }
+  }
+
+  // procedure result — has .data
+  if (output.data) {
+    const d = output.data
+    let text = ''
+    if (d.summary)          text += d.summary
+    if (d.key_steps?.length) {
+      text += '\n\nKey steps:\n' + (d.key_steps as string[]).map((s, i) => `${i + 1}. ${s}`).join('\n')
+    }
+    if (d.when_to_seek_help) text += `\n\nWhen to seek help: ${d.when_to_seek_help}`
+    if (d.disclaimer)        text += `\n\n⚠️ ${d.disclaimer}`
+    return { text: text.trim(), isEmergency: false }
+  }
+
+  if (output.message) return { text: output.message, isEmergency: false }
+  if (output.summary) return { text: output.summary, isEmergency: false }
+
+  return { text: 'Response received. Please try asking again for more detail.', isEmergency: false }
 }
 
 function TypingDots() {
@@ -65,9 +84,17 @@ function TypingDots() {
 
 const now = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
+// stable session id for the duration of the page visit
+function useSessionId() {
+  const ref = useRef<string>(`sess_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+  return ref.current
+}
+
 export default function AssistantPage() {
   const [searchParams] = useSearchParams()
   const prefill = searchParams.get('q') ?? ''
+  const { user } = useAuthStore()
+  const sessionId = useSessionId()
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -75,11 +102,11 @@ export default function AssistantPage() {
       role: 'ai',
       text: "Hello! I'm the AI-HPS assistant for Hôpital Général de Douala. I can help you find departments, understand procedures, and answer general questions. How can I help you today?",
       time: now(),
-      confidence: 100,
     },
   ])
   const [input, setInput] = useState(prefill)
   const [thinking, setThinking] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -90,24 +117,45 @@ export default function AssistantPage() {
     const msg = (text ?? input).trim()
     if (!msg || thinking) return
     setInput('')
+    setApiError(null)
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', text: msg, time: now() }
     setMessages((m) => [...m, userMsg])
     setThinking(true)
 
-    await new Promise((r) => setTimeout(r, 1400))
+    try {
+      const res = await pipelineApi.query({
+        raw_query: msg,
+        platform: 'web',
+        stream: 'A',
+        user_id: user?.id,
+        session_id: sessionId,
+        chatbot_mode: true,
+      })
 
-    const answer = getMockAnswer(msg)
-    const aiMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'ai',
-      text: answer.text,
-      time: now(),
-      confidence: answer.confidence,
-      ref: answer.ref,
+      const { text: responseText, isEmergency } = formatOutput(res)
+
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        text: responseText,
+        time: now(),
+        isEmergency,
+        hadResult: res.had_result,
+      }
+      setMessages((m) => [...m, aiMsg])
+    } catch (err: any) {
+      setApiError('Could not reach the AI assistant. Please check your connection and try again.')
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        text: 'Sorry, I could not connect to the AI service right now. Please try again in a moment.',
+        time: now(),
+      }
+      setMessages((m) => [...m, errMsg])
+    } finally {
+      setThinking(false)
     }
-    setMessages((m) => [...m, aiMsg])
-    setThinking(false)
   }
 
   return (
@@ -146,30 +194,37 @@ export default function AssistantPage() {
         </div>
       )}
 
+      {/* API error banner */}
+      {apiError && (
+        <div className="px-4 py-2 bg-red-50 border-b border-red-200 flex items-center gap-2 flex-shrink-0">
+          <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />
+          <p className="text-xs text-red-600">{apiError}</p>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#F5F7FA]">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'ai' && (
-              <div className="w-7 h-7 rounded-full bg-hgd-blue flex items-center justify-center flex-shrink-0 mr-2 mt-1">
-                <Sparkles size={12} className="text-white" />
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 mt-1 ${msg.isEmergency ? 'bg-red-500' : 'bg-hgd-blue'}`}>
+                {msg.isEmergency ? <AlertTriangle size={12} className="text-white" /> : <Sparkles size={12} className="text-white" />}
               </div>
             )}
             <div
               className={`max-w-[78%] ${
                 msg.role === 'user'
                   ? 'bg-hgd-blue text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed'
-                  : 'bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-pri leading-relaxed'
+                  : msg.isEmergency
+                    ? 'bg-red-50 border border-red-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-red-800 leading-relaxed'
+                    : 'bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-pri leading-relaxed'
               }`}
             >
               <p className="whitespace-pre-line">{msg.text}</p>
               <div className={`flex items-center justify-between mt-2 ${msg.role === 'user' ? 'text-white/60' : 'text-text-sec'}`}>
                 <span className="text-[10px]">{msg.time}</span>
-                {msg.confidence !== undefined && msg.role === 'ai' && (
-                  <div className="flex items-center gap-2">
-                    {msg.ref && <span className="text-[9px] font-mono opacity-60">{msg.ref}</span>}
-                    <span className="text-[10px] font-bold text-green-600">Confidence {msg.confidence}%</span>
-                  </div>
+                {msg.role === 'ai' && msg.isEmergency && (
+                  <span className="text-[10px] font-bold text-red-600">⚠️ Emergency</span>
                 )}
               </div>
             </div>

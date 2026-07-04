@@ -1,0 +1,320 @@
+================================================================================
+  AI-HPS — ARTIFICIAL INTELLIGENCE HOSPITAL PROCEDURE SYSTEM
+  Project Overview Report
+  Student: Ful Marvel
+  Institution: Institut Universitaire des Côtes de l'Afrique (IUC)
+  Hospital Partner: Hôpital Général de Douala (HGD), Cameroon
+================================================================================
+
+
+WHAT IS THIS PROJECT?
+─────────────────────
+AI-HPS is a smart digital assistant system built specifically for Hôpital
+Général de Douala. It uses Artificial Intelligence to help three different
+groups of people at the same time:
+
+  1. PATIENTS AND VISITORS
+     Instead of wandering the hospital trying to find the right department,
+     a patient can open the app on their phone, type a question in plain
+     English or French ("Where do I go for a blood test?" or "Où est la
+     cardiologie?"), and receive immediate, accurate directions and
+     guidance.
+
+  2. DOCTORS AND NURSES (Clinical Staff)
+     Medical staff can instantly look up the correct clinical procedure for
+     any situation — for example, "What is the stroke protocol for a patient
+     who arrived 20 minutes ago?" — and the AI provides step-by-step
+     guidance sourced directly from World Health Organization (WHO)
+     documents, tailored to HGD's own departments and resources.
+
+  3. HOSPITAL ADMINISTRATORS
+     Administrators get a dashboard where they can manage all procedures,
+     approve protocol updates, monitor how staff are using the system,
+     review audit logs, and track analytics — all in one secure web
+     portal.
+
+The system works on web browsers (for staff) and on mobile phones (for
+patients), and was designed to work in Cameroon's bilingual context,
+supporting both English and French.
+
+
+────────────────────────────────────────────────────────────────────────────────
+THE AI TECHNOLOGY — WHAT MAKES IT "INTELLIGENT"
+────────────────────────────────────────────────────────────────────────────────
+
+This is not a simple search engine or a database lookup tool. The project
+uses several advanced and modern AI technologies working together. Each is
+explained below in plain terms.
+
+
+1. LARGE LANGUAGE MODELS (LLMs) — The "Brain" of the System
+─────────────────────────────────────────────────────────────
+A Large Language Model is a type of AI that can understand and generate
+human language, much like a very knowledgeable expert you can have a
+conversation with. The same technology powers ChatGPT.
+
+In AI-HPS, three different LLMs are integrated:
+  • GPT-4o-mini  (by OpenAI — the company behind ChatGPT)
+  • Mistral      (a leading European AI model)
+  • Gemini       (by Google DeepMind)
+
+These models do not replace the doctor. They act as a highly informed
+assistant — one that has read thousands of medical documents and can
+instantly recall the right information. The system is designed so that
+the AI always reminds users to verify clinical guidance with a senior
+clinician before acting on it.
+
+
+2. RAG — RETRIEVAL-AUGMENTED GENERATION
+  "AI That Reads Documents Before It Answers"
+───────────────────────────────────────────────
+One of the biggest risks with AI is "hallucination" — when the AI
+confidently gives a wrong answer that it invented. This is especially
+dangerous in a medical setting.
+
+AI-HPS uses a technique called Retrieval-Augmented Generation (RAG)
+to solve this problem.
+
+How it works, simply:
+  Step 1 — Before the project went live, real WHO clinical documents
+            (PDF guidebooks on Emergency Care, Maternity, ICU, Surgery,
+            Blood Bank, and Infection Control) were fed into the system.
+
+  Step 2 — When a doctor or nurse asks the AI a clinical question, the
+            AI first SEARCHES those documents for the relevant section,
+            then READS that section, and only THEN writes an answer
+            based on what it actually found.
+
+  Step 3 — If the AI's confidence score falls below 40%, it refuses to
+            answer and instead tells the user it could not find reliable
+            information. This is a deliberate safety feature — the
+            system is designed to say "I don't know" rather than guess
+            on a medical question.
+
+This means every clinical answer the AI gives is traceable back to a
+real WHO document stored in the system. It does not invent information.
+
+
+3. VECTOR SEARCH (FAISS) — "Understanding Meaning, Not Just Words"
+────────────────────────────────────────────────────────────────────
+Traditional hospital systems use keyword search — you type "stroke" and
+it finds documents containing the word "stroke." This misses documents
+that use the word "cerebrovascular accident" (the medical term for stroke)
+or "brain attack" (a common alternative term).
+
+AI-HPS uses FAISS (Facebook AI Similarity Search), a technology that
+converts text into mathematical representations called "vectors" or
+"embeddings." These capture the MEANING of words, not just the spelling.
+
+In practice: if a nurse types "patient collapsed and is confused," the
+system understands that this query is semantically related to stroke
+protocols, sepsis guidelines, and hypoglycemia procedures — even without
+those exact words being typed. It retrieves all relevant content by
+understanding the intent behind the words.
+
+This makes the search dramatically smarter than any keyword-based system.
+
+
+4. MULTI-AGENT AI PIPELINE (LangGraph)
+  "A Team of Specialist AIs Working Together"
+──────────────────────────────────────────────
+Most AI systems use a single AI model to handle every type of question.
+AI-HPS takes a more advanced approach: it uses a pipeline of six
+SPECIALISED AI AGENTS, each designed for a specific type of task. They
+are coordinated using a framework called LangGraph, which is a
+state-of-the-art tool for building AI agent networks.
+
+Think of it as a hospital itself — when you arrive, a receptionist
+(Router Agent) figures out what you need and directs you to the right
+specialist. You do not see the cardiologist for a broken arm.
+
+The six agents are:
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ AGENT-R  │  THE ROUTER                                          │
+  │          │  The first point of contact. It reads the incoming   │
+  │          │  message, detects the language (English or French),  │
+  │          │  classifies the intent (Is this an emergency? A      │
+  │          │  navigation question? A clinical procedure lookup?    │
+  │          │  General hospital information?), and sends the       │
+  │          │  request to the right specialist agent.              │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ AGENT-E  │  THE EMERGENCY AGENT                                 │
+  │          │  When a question is flagged as an emergency, this    │
+  │          │  agent responds in under 3 seconds — guaranteed.     │
+  │          │  It does NOT use an LLM (which takes time). Instead  │
+  │          │  it retrieves pre-loaded emergency content stored in │
+  │          │  fast memory (Redis cache). Speed is the priority.   │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ AGENT-N  │  THE NAVIGATION AGENT                                │
+  │          │  Handles "where is...?" questions. Given a patient's │
+  │          │  destination (e.g., "Cardiology"), it calculates the │
+  │          │  best path from the hospital entrance using cosine   │
+  │          │  similarity to match what the user typed with the    │
+  │          │  correct department, then retrieves step-by-step     │
+  │          │  directions from the database.                       │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ AGENT-C  │  THE CONVERSATIONAL AGENT                            │
+  │          │  Handles general questions about the hospital — its  │
+  │          │  services, visiting hours, departments, and general  │
+  │          │  information. It also acts as a conversation         │
+  │          │  reformulator: when a user has a back-and-forth      │
+  │          │  chat, Agent-C uses the conversation history to      │
+  │          │  properly understand follow-up questions.            │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ AGENT-P  │  THE PROCEDURE AGENT                                 │
+  │          │  The most complex agent. It handles clinical         │
+  │          │  protocol lookups for medical staff. It searches the │
+  │          │  WHO knowledge base using both semantic vector       │
+  │          │  search and full-text search simultaneously, merges  │
+  │          │  the results, and generates a grounded, step-by-step │
+  │          │  clinical answer. If its confidence is too low, it   │
+  │          │  refuses to answer rather than risk giving incorrect │
+  │          │  medical guidance.                                   │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ AGENT-O  │  THE OUTPUT AGENT                                    │
+  │          │  The final agent in every pipeline. It takes the     │
+  │          │  answer produced by whichever specialist agent was   │
+  │          │  used, and formats it correctly for the platform the │
+  │          │  user is on — a full web page, a mobile phone, an   │
+  │          │  SMS, WhatsApp, or even USSD (the basic mobile menu  │
+  │          │  that works on any phone, even without internet).    │
+  └─────────────────────────────────────────────────────────────────┘
+
+The pipeline always follows this pattern:
+
+  AGENT-R  →  (Emergency?) → AGENT-E → AGENT-O → Answer
+           →  (Navigation?) → AGENT-N → AGENT-O → Answer
+           →  (Information?) → AGENT-C → AGENT-O → Answer
+           →  (Procedure?) → [AGENT-C →] AGENT-P → AGENT-O → Answer
+
+
+5. NATURAL LANGUAGE PROCESSING (NLP) — "Understanding Human Language"
+───────────────────────────────────────────────────────────────────────
+The system uses NLP techniques to:
+
+  • LANGUAGE DETECTION: Automatically detect whether the user is
+    writing in English or French, and respond in the same language.
+    This is critical for Cameroon's bilingual healthcare context.
+
+  • INTENT CLASSIFICATION: Understand WHAT the user is trying to do,
+    not just what words they typed. A question like "my arm hurts after
+    the surgery" is correctly identified as a post-operative concern,
+    not a navigation or general information request.
+
+  • SEMANTIC SIMILARITY: Match what a user says to the closest relevant
+    department, procedure, or content in the knowledge base, even when
+    the exact words do not match.
+
+
+6. KNOWLEDGE BASE INGESTION — "Teaching the AI from Real Documents"
+─────────────────────────────────────────────────────────────────────
+The AI's clinical knowledge does not come from the general internet
+(which contains unreliable medical content). It was specifically trained
+on the following WHO and international clinical guideline documents:
+
+  • ICU:              WHO Critical Care guidelines (2 volumes)
+  • Blood Bank:       WHO Clinical Use of Blood, Patient Blood Management
+  • Maternity:        WHO Safe Childbirth, Antenatal Care, Labour guides
+  • Surgery:          WHO Safe Surgery and Paediatric Surgery manuals
+  • Infection Control: WHO Infection Prevention and Control documents
+
+A custom data ingestion pipeline extracts text from these PDF documents,
+processes them into the vector database, and makes them searchable by the
+AI. This process is called "knowledge base ingestion."
+
+The system is designed so that as HGD's own internal protocols are
+approved and added by administrators, those become part of the knowledge
+base too — continuously improving the AI's knowledge.
+
+
+────────────────────────────────────────────────────────────────────────────────
+HOW IS THIS PROJECT INNOVATIVE?
+────────────────────────────────────────────────────────────────────────────────
+
+1. BUILT FOR AN AFRICAN HOSPITAL CONTEXT
+   Most hospital AI systems are built for hospitals in Europe or the USA
+   with high-bandwidth internet, expensive devices, and staff who speak
+   one language. AI-HPS was designed for HGD Douala, accounting for:
+   • Bilingual users (English and French)
+   • Patients who may only have a basic feature phone (supported via USSD
+     — the same technology used for mobile money in Africa)
+   • A resource-constrained environment where the AI must be fast, safe,
+     and work within the hospital's own server infrastructure.
+
+2. SAFETY-FIRST AI DESIGN
+   The system has a hard confidence threshold: if the AI is not at least
+   40% confident in its clinical answer, it refuses to answer. Most
+   commercial chatbots do not have this feature — they always produce an
+   answer even when they are not sure. In a medical environment, a wrong
+   confident answer can be fatal. The AI in this system is designed to
+   say "I am not certain" when appropriate.
+
+3. TAMPER-PROOF AUDIT SYSTEM
+   Every single action in the system — every login, every procedure
+   viewed, every AI query — is recorded in an append-only audit log that
+   is cryptographically signed using HMAC (Hash-Based Message
+   Authentication Code). This means it is mathematically impossible to
+   alter or delete a log entry without the system detecting it.
+   This is a feature typically found in banking and legal systems, and
+   is being applied here to healthcare for accountability and
+   patient safety.
+
+4. MULTI-PLATFORM FROM ONE AI ENGINE
+   The same AI pipeline produces correctly formatted responses for five
+   different output channels: web browser, mobile app, SMS, WhatsApp,
+   and USSD. No other known hospital information system in Cameroon
+   provides AI guidance across all these channels from a single engine.
+
+5. MULTI-AGENT ARCHITECTURE
+   Rather than a single AI trying to be good at everything (and
+   consequently good at nothing), AI-HPS uses a network of six
+   specialized agents — the same architectural approach used by
+   leading AI research organizations for complex real-world systems.
+   This architecture makes the system more accurate, faster, safer,
+   and easier to maintain and upgrade.
+
+6. REAL-TIME ANALYTICS AND CONTENT GAP DETECTION
+   The system tracks which questions the AI COULD NOT answer with
+   confidence. These are stored as "content gaps" and reported to
+   administrators, telling them exactly which clinical areas need more
+   documentation added to the system. The AI effectively tells the
+   hospital where its knowledge is incomplete.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SUMMARY OF AI TECHNOLOGIES USED
+────────────────────────────────────────────────────────────────────────────────
+
+  TECHNOLOGY                    PURPOSE IN THIS PROJECT
+  ──────────────────────────────────────────────────────────────────
+  Large Language Models (LLMs)  Generate intelligent, human-like answers
+  GPT-4o-mini (OpenAI)          Primary LLM for intent classification and
+                                procedure guidance generation
+  Mistral / Gemini              Alternative LLM backends for flexibility
+  RAG (Retrieval-Augmented      Grounds all clinical answers in verified
+    Generation)                 WHO documents; prevents hallucination
+  FAISS Vector Search           Semantic search by meaning, not keywords
+  LangGraph Agent Framework     Coordinates the 6-agent AI pipeline
+  NLP / Intent Classification   Understands what the user is really asking
+  Language Detection            Automatic English/French routing
+  Redis Caching                 Sub-3-second emergency response guarantee
+  HMAC Cryptographic Signing    Tamper-proof audit trail
+  Confidence Thresholding       Refuses to answer when not certain enough
+
+
+────────────────────────────────────────────────────────────────────────────────
+IN ONE SENTENCE
+────────────────────────────────────────────────────────────────────────────────
+
+AI-HPS is an intelligent, bilingual hospital assistant that uses a team of
+six specialised AI agents — backed by WHO clinical documents and the same
+language model technology that powers ChatGPT — to guide patients through
+Hôpital Général de Douala, provide medical staff with instant, evidence-based
+clinical procedure guidance, and give administrators complete oversight of
+hospital protocols, all through a single secure system built specifically for
+the Cameroonian healthcare context.
+
+================================================================================
+  End of Report
+================================================================================

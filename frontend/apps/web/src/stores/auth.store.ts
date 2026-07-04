@@ -13,7 +13,11 @@ interface AuthState {
   isPatient: () => boolean
 }
 
-const STAFF_ROLES: UserRole[] = ['super_admin', 'admin', 'department_head', 'clinician', 'nurse']
+const STAFF_ROLES: UserRole[] = [
+  'super_admin', 'admin', 'department_admin', 'department_head',
+  'doctor', 'clinician', 'nurse', 'pharmacist',
+  'lab_technician', 'radiologist', 'infection_control_officer', 'staff',
+]
 
 export const useAuthStore = create<AuthState>()(
   persist(
