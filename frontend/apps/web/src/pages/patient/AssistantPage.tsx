@@ -16,7 +16,7 @@ interface Message {
 const SUGGESTED = ['Visiting hours', 'Find pediatrics', 'Pre-op fasting']
 
 function formatOutput(res: PipelineQueryResponse): { text: string; isEmergency: boolean } {
-  const { output, is_emergency, had_result, error } = res
+  const { output, is_emergency, error } = res
 
   if (error) return { text: `Something went wrong: ${error}`, isEmergency: false }
 
@@ -27,7 +27,7 @@ function formatOutput(res: PipelineQueryResponse): { text: string; isEmergency: 
     return { text: msg, isEmergency: true }
   }
 
-  if (!had_result || !output) {
+  if (!output) {
     return {
       text: 'No information found for your query. Please try rephrasing your question or ask a member of hospital staff for assistance.',
       isEmergency: false,
@@ -36,32 +36,56 @@ function formatOutput(res: PipelineQueryResponse): { text: string; isEmergency: 
 
   if (typeof output === 'string') return { text: output, isEmergency: false }
 
-  // navigation / dept info — has .found
+  // Not found — backend always sends a specific message
   if (output.found === false) {
-    return { text: output.message ?? 'Department not found. Please contact the main reception.', isEmergency: false }
-  }
-  if (output.found === true) {
-    let text = output.name ? `**${output.name}**\n` : ''
-    if (output.description) text += `\n${output.description}\n`
-    if (output.location)    text += `\nLocation: ${output.location}`
-    if (output.phone)       text += `\nPhone: ${output.phone}`
-    if (output.hours)       text += `\nHours: ${output.hours}`
-    return { text: text.trim() || (output.message ?? ''), isEmergency: false }
+    return {
+      text: output.message ?? 'No information found for your query. Please try rephrasing your question or ask a member of hospital staff for assistance.',
+      isEmergency: false,
+    }
   }
 
-  // procedure result — has .data
-  if (output.data) {
+  // Procedure result — {found: true, data: {summary, key_steps, ...}}
+  if (output.found === true && output.data) {
     const d = output.data
     let text = ''
-    if (d.summary)          text += d.summary
+    if (d.summary)           text += d.summary
     if (d.key_steps?.length) {
-      text += '\n\nKey steps:\n' + (d.key_steps as string[]).map((s, i) => `${i + 1}. ${s}`).join('\n')
+      text += '\n\nKey steps:\n' + (d.key_steps as string[]).map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')
     }
     if (d.when_to_seek_help) text += `\n\nWhen to seek help: ${d.when_to_seek_help}`
     if (d.disclaimer)        text += `\n\n⚠️ ${d.disclaimer}`
+    return { text: text.trim() || d.summary || 'Procedure found.', isEmergency: false }
+  }
+
+  // Navigation result — {found: true, department, steps, ...}
+  if (output.found === true && output.department) {
+    let text = output.department
+    if (output.estimated_time_minutes) text += ` (${output.estimated_time_minutes} min walk)`
+    if (output.from_location) text += `\nFrom: ${output.from_location}`
+    if (output.steps?.length) {
+      text += '\n\nDirections:\n' + output.steps.map((s: any, i: number) => `${i + 1}. ${s.instruction ?? s}`).join('\n')
+    }
     return { text: text.trim(), isEmergency: false }
   }
 
+  // Department info — {found: true, name, location, hours, contact}
+  if (output.found === true && output.name) {
+    let text = output.name
+    if (output.location) text += `\nLocation: ${output.location}`
+    if (output.hours) {
+      const h = output.hours
+      const str = typeof h === 'object' ? Object.entries(h).map(([k, v]) => `${k}: ${v}`).join(' | ') : String(h)
+      if (str) text += `\nHours: ${str}`
+    }
+    if (output.contact) {
+      const c = output.contact
+      const str = typeof c === 'object' ? Object.values(c).filter(Boolean).join(' | ') : String(c)
+      if (str) text += `\nContact: ${str}`
+    }
+    return { text: text.trim(), isEmergency: false }
+  }
+
+  // Fallback for any unrecognised shape
   if (output.message) return { text: output.message, isEmergency: false }
   if (output.summary) return { text: output.summary, isEmergency: false }
 
@@ -70,14 +94,17 @@ function formatOutput(res: PipelineQueryResponse): { text: string; isEmergency: 
 
 function TypingDots() {
   return (
-    <div className="flex gap-1.5 items-center px-4 py-3">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-2 h-2 rounded-full bg-hgd-orange"
-          style={{ animation: 'bounce 1.2s infinite', animationDelay: `${i * 0.2}s`, opacity: 0.5 }}
-        />
-      ))}
+    <div className="flex flex-col gap-1 px-4 py-3">
+      <div className="flex gap-1.5 items-center">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="w-2 h-2 rounded-full bg-hgd-orange"
+            style={{ animation: 'bounce 1.2s infinite', animationDelay: `${i * 0.2}s`, opacity: 0.5 }}
+          />
+        ))}
+      </div>
+      <span className="text-[10px] text-slate-400">AI is thinking…</span>
     </div>
   )
 }
@@ -173,9 +200,10 @@ export default function AssistantPage() {
             <p className="text-base font-bold text-white">AI Assistant</p>
             <p className="text-[10px] text-white/70">Always-on · grounded in HGD protocols</p>
           </div>
-          <span className="ml-auto text-[10px] font-semibold bg-green-400/20 text-green-300 border border-green-400/30 rounded-full px-2 py-0.5">
-            ● Online
-          </span>
+          <div className="ml-auto flex items-center gap-1 bg-green-400/20 border border-green-400/30 rounded-full px-2 py-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+            <span className="text-[10px] font-semibold text-green-300">Online</span>
+          </div>
         </div>
       </div>
 

@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session
 
 from shared.models.auth import User
 from shared.models.procedures import (
-    Category, Department, EscalationPathway,
-    NavigationPath, ProcedureApproval, ProcedureEntry, ProcedureVersion,
+    Category, Department, NavigationPath,
+    ProcedureApproval, ProcedureEntry, ProcedureVersion,
 )
 from services.svc03_procedures import schemas
 
@@ -203,12 +203,14 @@ def create_procedure(db: Session, data: schemas.ProcedureCreate, actor: User) ->
         content=data.content,
         steps=data.steps,
         compliance_annotations=data.compliance_annotations,
+        knowledge_domain=data.knowledge_domain,
         stream_target=data.stream_target,
         applicable_roles=data.applicable_roles,
         risk_level=data.risk_level,
         department_id=data.department_id,
         category_id=data.category_id,
         language=data.language,
+        document_url=data.document_url,
         created_by=actor.id,
         status="draft",
         version=1,

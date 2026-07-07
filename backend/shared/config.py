@@ -18,13 +18,31 @@ class Settings(BaseSettings):
     MAX_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_MINUTES: int = 30
 
-    OPENAI_API_KEY: str = ""
-    XAI_API_KEY: str = ""
+    # ── LLM provider ──────────────────────────────────────────────────────────
+    LLM_PROVIDER: str = "groq"
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
+
+    # Groq API — never hard-coded; always read from .env
+    GROQ_API_KEY: str = ""
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_CHAT_ENDPOINT: str = "https://api.groq.com/openai/v1/chat/completions"
+
+    # Optional fallback providers
     GEMINI_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
+
+    # ── LLM generation parameters ─────────────────────────────────────────────
+    TEMPERATURE: float = 0.2
+    MAX_TOKENS: int = 650
+
+    # ── RAG retrieval parameters ──────────────────────────────────────────────
+    RAG_TOP_K: int = 5          # chunks retrieved from vector store
+    RAG_MIN_SIMILARITY: float = 0.35  # minimum cosine similarity to accept
+
+    # ── Phase 1 departments ───────────────────────────────────────────────────
     PHASE1_DEPARTMENTS: str = "Emergency,Blood Bank,ICU,Surgery,Maternity,Infection Control"
 
-    # Email / SMTP
+    # ── Email / SMTP ──────────────────────────────────────────────────────────
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     EMAIL_FROM: str = ""

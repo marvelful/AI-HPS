@@ -1,0 +1,14 @@
+{
+  "documents_processed": 14,
+  "documents_failed": 0,
+  "total_chunks": 4470,
+  "departments": {
+    "Blood Bank": 1281,
+    "ICU": 573,
+    "Infection Control": 707,
+    "Maternity": 448,
+    "Surgery": 1461
+  },
+  "started_at": "2026-07-04T17:50:27.882556+00:00",
+  "completed_at": "2026-07-04T17:55:47.756704+00:00"
+}

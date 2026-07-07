@@ -10,6 +10,7 @@ app = FastAPI(
     title="AI-HPS — Procedure Management (SVC-03)",
     version=settings.APP_VERSION,
     docs_url="/docs",
+    redirect_slashes=False,
 )
 
 app.add_middleware(

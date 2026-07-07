@@ -41,6 +41,13 @@ docker/volumes/
 
 # ── Local tooling ─────────────────────────────────────────
 .claude/
+.codex/
+.agents/
+
+# ── Accidental command output ─────────────────────────────
+backend/4.0.0
+backend/NO
+backend/\[\{score
 
 # ── OS / Editor ───────────────────────────────────────────
 .DS_Store

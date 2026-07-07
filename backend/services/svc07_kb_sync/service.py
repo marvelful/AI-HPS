@@ -1,47 +1,36 @@
 """
-SVC-07 KB Sync — vector store and embedding service.
+SVC-07 KB Sync — vector knowledge base service.
 
-Uses a numpy-based cosine-similarity store (no FAISS dependency required).
-Embedder: sentence-transformers paraphrase-multilingual-MiniLM-L12-v2 (384d).
-Falls back to a zero-vector stub when the model is not yet installed,
-so the service starts and can be tested even without the ML stack.
+Source of truth: backend/knowledge/knowledge_chunks.jsonl
+Embedding model: paraphrase-multilingual-MiniLM-L12-v2 (384-dim, multilingual)
+Index stored at: backend/kb_index/aihps  (.npy vectors + .json metadata)
 
-Index stored at: backend/kb_index/aihps  (.npy for vectors, .json for metadata)
+Workflow:
+  1. Run ingestion pipeline  → produces knowledge_chunks.jsonl
+  2. Call rebuild_from_jsonl() → embeds all chunks → saves numpy index
+  3. search() → cosine similarity over embedded query
 """
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
 
 from shared.config import get_settings
-from shared.database import SessionLocal
-from shared.models.procedures import ProcedureEntry
 
 settings = get_settings()
 
-_INDEX_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "kb_index")
-_INDEX_BASE = os.path.join(_INDEX_DIR, "aihps")
+_KNOWLEDGE_DIR = Path(__file__).parent.parent.parent / "knowledge"
+_JSONL_PATH = _KNOWLEDGE_DIR / "knowledge_chunks.jsonl"
+_INDEX_DIR = Path(__file__).parent.parent.parent / "kb_index"
+_INDEX_BASE = str(_INDEX_DIR / "aihps")
 
-# ── Chunking ─────────────────────────────────────────────────────────────────
-_CHUNK_CHARS   = 2000  # ≈ 500 tokens
-_OVERLAP_CHARS = 200   # ≈ 50 tokens
-
-
-def _chunk_text(text: str) -> list[str]:
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = min(start + _CHUNK_CHARS, len(text))
-        chunks.append(text[start:end].strip())
-        if end >= len(text):
-            break
-        start = end - _OVERLAP_CHARS
-    return [c for c in chunks if c]
+_EMBED_BATCH = 64
 
 
-# ── Embedder ─────────────────────────────────────────────────────────────────
+# ── Embedder ──────────────────────────────────────────────────────────────────
 
 class _Embedder:
     def __init__(self):
@@ -57,73 +46,72 @@ class _Embedder:
             self._model = SentenceTransformer(self._model_name)
             return True
         except Exception as exc:
-            print(f"[svc07] Embedder not available: {exc}. Using zero vectors.")
+            print(f"[svc07] Embedder unavailable: {exc}")
             return False
 
     @property
     def name(self) -> str:
-        return self._model_name if self._model else "stub (zero-vector)"
+        return self._model_name if self._model else "stub (no sentence-transformers)"
 
     @property
     def dim(self) -> int:
         return self._dim
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        if not self._load() or not texts:
-            return [([0.0] * self._dim) for _ in texts]
+        if not texts:
+            return []
+        if not self._load():
+            return [[0.0] * self._dim for _ in texts]
         vecs = self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
         return vecs.tolist()
 
     def embed_one(self, text: str) -> list[float]:
-        return self.embed([text])[0]
+        result = self.embed([text])
+        return result[0] if result else [0.0] * self._dim
 
 
-# ── Numpy vector store ────────────────────────────────────────────────────────
+# ── Vector store ──────────────────────────────────────────────────────────────
 
 class _VectorStore:
     def __init__(self):
         self._vecs: list[np.ndarray] = []
-        self._meta: list[dict]       = []
-        self._last_sync: str | None  = None
+        self._meta: list[dict] = []
+        self._last_sync: Optional[str] = None
+
+    def clear(self) -> None:
+        self._vecs.clear()
+        self._meta.clear()
 
     def add(self, vec: list[float], meta: dict) -> None:
         self._vecs.append(np.array(vec, dtype=np.float32))
         self._meta.append(meta)
 
-    def remove_entry(self, entry_id: str) -> int:
-        kept_v, kept_m = [], []
-        removed = 0
-        for v, m in zip(self._vecs, self._meta):
-            if m.get("entry_id") == entry_id:
-                removed += 1
-            else:
-                kept_v.append(v)
-                kept_m.append(m)
-        self._vecs, self._meta = kept_v, kept_m
-        return removed
-
     def search(
         self,
         query_vec: list[float],
         k: int = 5,
-        stream_target: Optional[str] = None,
+        knowledge_domain: Optional[str] = None,
+        department: Optional[str] = None,
         language: Optional[str] = None,
+        role: Optional[str] = None,
     ) -> list[tuple[float, dict]]:
         if not self._vecs:
             return []
 
         q = np.array(query_vec, dtype=np.float32)
-        matrix = np.stack(self._vecs)   # shape (N, dim)
-
-        # Cosine similarity (vectors are pre-normalised by the embedder)
-        scores = matrix @ q
+        matrix = np.stack(self._vecs)
+        scores = matrix @ q  # cosine similarity (vectors are pre-normalised)
 
         results = []
-        for idx, score in enumerate(scores):
-            m = self._meta[idx]
-            if stream_target and m.get("stream_target") not in {stream_target, "both"}:
+        for i, score in enumerate(scores):
+            m = self._meta[i]
+            if knowledge_domain and m.get("knowledge_domain") != knowledge_domain:
+                continue
+            if department and m.get("department", "").lower() != department.lower():
                 continue
             if language and m.get("language") != language:
+                continue
+            if role and m.get("role") not in {"all", role}:
                 continue
             results.append((float(score), m))
 
@@ -135,39 +123,44 @@ class _VectorStore:
         return len(self._vecs)
 
     @property
-    def unique_procedures(self) -> int:
-        return len({m["entry_id"] for m in self._meta})
+    def unique_documents(self) -> int:
+        return len({m.get("document_id", "") for m in self._meta})
 
     def save(self, base_path: str) -> None:
         os.makedirs(os.path.dirname(base_path), exist_ok=True)
-        arr = np.stack(self._vecs).astype(np.float32) if self._vecs else np.array([], dtype=np.float32)
+        if self._vecs:
+            arr = np.stack(self._vecs).astype(np.float32)
+        else:
+            arr = np.zeros((0, embedder.dim), dtype=np.float32)
         np.save(base_path + ".npy", arr)
         with open(base_path + ".json", "w", encoding="utf-8") as f:
             json.dump(self._meta, f, ensure_ascii=False)
         self._last_sync = datetime.now(timezone.utc).isoformat()
+        print(f"[svc07] Saved: {len(self._vecs)} vectors → {base_path}")
 
     def load(self, base_path: str) -> None:
         npy = base_path + ".npy"
         jsn = base_path + ".json"
         if os.path.exists(npy) and os.path.exists(jsn):
             arr = np.load(npy)
-            self._vecs = [arr[i] for i in range(len(arr))] if arr.ndim == 2 else []
+            self._vecs = [arr[i] for i in range(len(arr))] if arr.ndim == 2 and len(arr) > 0 else []
             with open(jsn, "r", encoding="utf-8") as f:
                 self._meta = json.load(f)
-            print(f"[svc07] Loaded index: {len(self._vecs)} vectors from {base_path}")
+            self._last_sync = datetime.now(timezone.utc).isoformat()
+            print(f"[svc07] Loaded index: {len(self._vecs)} vectors")
         else:
-            print(f"[svc07] No existing index at {base_path} — starting fresh")
+            print(f"[svc07] No index at {base_path} — run POST /pipeline/rebuild-kb to build it")
 
     @property
-    def last_sync_at(self) -> str | None:
+    def last_sync_at(self) -> Optional[str]:
         return self._last_sync
 
 
-# ── Public singleton interface ────────────────────────────────────────────────
-
 embedder = _Embedder()
-store    = _VectorStore()
+store = _VectorStore()
 
+
+# ── Public API ─────────────────────────────────────────────────────────────────
 
 def load_index() -> None:
     store.load(_INDEX_BASE)
@@ -175,129 +168,99 @@ def load_index() -> None:
 
 def get_status() -> dict:
     return {
-        "vector_count":       store.vector_count,
-        "unique_procedures":  store.unique_procedures,
-        "last_sync_at":       store.last_sync_at,
-        "embedder":           embedder.name,
-        "index_path":         _INDEX_BASE,
+        "vector_count":    store.vector_count,
+        "unique_documents": store.unique_documents,
+        "last_sync_at":    store.last_sync_at,
+        "embedder":        embedder.name,
+        "jsonl_path":      str(_JSONL_PATH),
+        "jsonl_exists":    _JSONL_PATH.exists(),
+        "index_path":      _INDEX_BASE,
     }
 
 
-def sync_procedure(entry_id: str) -> int:
-    """Fetch a published procedure from the DB, embed its chunks, update the store."""
-    db = SessionLocal()
-    try:
-        entry: Optional[ProcedureEntry] = (
-            db.query(ProcedureEntry)
-            .filter(ProcedureEntry.id == entry_id, ProcedureEntry.status == "published")
-            .first()
+def rebuild_from_jsonl() -> int:
+    """
+    Load knowledge_chunks.jsonl, embed every chunk, save numpy index.
+    Must be called after the ingestion pipeline produces the JSONL.
+    """
+    if not _JSONL_PATH.exists():
+        raise FileNotFoundError(
+            f"knowledge_chunks.jsonl not found at {_JSONL_PATH}.\n"
+            "Run the ingestion pipeline first:\n"
+            "  cd backend && python -m ingestion.cli"
         )
-        if not entry:
-            removed = store.remove_entry(entry_id)
-            if removed:
-                store.save(_INDEX_BASE)
-            return 0
 
-        # Remove stale chunks for this entry
-        store.remove_entry(entry_id)
+    chunks: list[dict] = []
+    with open(_JSONL_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                chunks.append(json.loads(line))
 
-        # Build text to embed
-        parts = [entry.title]
-        if entry.summary:
-            parts.append(entry.summary)
-        parts.append(entry.content)
-        if entry.steps:
-            steps_text = " ".join(
-                s.get("instruction", "") or s.get("text", "") or str(s)
-                for s in entry.steps
-            )
-            parts.append(steps_text)
-        full_text = "\n\n".join(p for p in parts if p)
+    if not chunks:
+        raise ValueError("knowledge_chunks.jsonl is empty — re-run the ingestion pipeline")
 
-        chunks = _chunk_text(full_text)
-        if not chunks:
-            return 0
+    print(f"[svc07] Embedding {len(chunks)} chunks...")
 
-        vecs = embedder.embed(chunks)
-        for i, (chunk, vec) in enumerate(zip(chunks, vecs)):
-            store.add(vec, {
-                "entry_id":       str(entry.id),
-                "chunk_index":    i,
-                "chunk_text":     chunk[:300],
-                "title":          entry.title,
-                "stream_target":  entry.stream_target,
-                "applicable_roles": list(entry.applicable_roles or []),
-                "risk_level":     entry.risk_level,
-                "language":       entry.language,
-                "status":         entry.status,
-                "department_id":  str(entry.department_id) if entry.department_id else None,
-            })
+    # Build text to embed: title + section + first 800 chars of content
+    texts = [
+        " ".join(filter(None, [
+            c.get("title", ""),
+            c.get("section", ""),
+            c.get("content", "")[:800],
+        ]))
+        for c in chunks
+    ]
 
-        store.save(_INDEX_BASE)
-        print(f"[svc07] Synced {entry_id}: {len(chunks)} chunks")
-        return len(chunks)
-    finally:
-        db.close()
+    all_vecs: list[list[float]] = []
+    for i in range(0, len(texts), _EMBED_BATCH):
+        batch = texts[i: i + _EMBED_BATCH]
+        all_vecs.extend(embedder.embed(batch))
+        done = min(i + _EMBED_BATCH, len(texts))
+        if done % 320 == 0 or done == len(texts):
+            print(f"  [{done}/{len(texts)}]")
 
+    store.clear()
+    for chunk, vec in zip(chunks, all_vecs):
+        store.add(vec, {
+            # Identity
+            "chunk_id":        chunk["chunk_id"],
+            "document_id":     chunk["document_id"],
+            # Display / citation
+            "title":           chunk.get("title", ""),
+            "section":         chunk.get("section", ""),
+            "citation":        chunk.get("citation", ""),
+            "page":            chunk.get("page", 0),
+            # Routing / filtering
+            "knowledge_domain": chunk["knowledge_domain"],
+            "department":      chunk["department"],
+            "language":        chunk["language"],
+            "role":            chunk.get("role", "all"),
+            "approval_status": chunk.get("approval_status", "approved"),
+            "is_table":        chunk.get("is_table", False),
+            # Content preview for LLM context (truncated to save RAM)
+            "content":         chunk["content"][:1000],
+        })
 
-def remove_procedure(entry_id: str) -> int:
-    removed = store.remove_entry(entry_id)
-    if removed:
-        store.save(_INDEX_BASE)
-    return removed
-
-
-def rebuild_full_index() -> int:
-    """Re-embed all published procedures from scratch."""
-    db = SessionLocal()
-    try:
-        entries = (
-            db.query(ProcedureEntry)
-            .filter(ProcedureEntry.status == "published")
-            .all()
-        )
-        # Reset store
-        store._vecs.clear()
-        store._meta.clear()
-        total_chunks = 0
-        for entry in entries:
-            # Reuse sync logic but don't re-open DB
-            parts = [entry.title]
-            if entry.summary:
-                parts.append(entry.summary)
-            parts.append(entry.content)
-            full_text = "\n\n".join(p for p in parts if p)
-            chunks = _chunk_text(full_text)
-            if not chunks:
-                continue
-            vecs = embedder.embed(chunks)
-            for i, (chunk, vec) in enumerate(zip(chunks, vecs)):
-                store.add(vec, {
-                    "entry_id":       str(entry.id),
-                    "chunk_index":    i,
-                    "chunk_text":     chunk[:300],
-                    "title":          entry.title,
-                    "stream_target":  entry.stream_target,
-                    "applicable_roles": list(entry.applicable_roles or []),
-                    "risk_level":     entry.risk_level,
-                    "language":       entry.language,
-                    "status":         entry.status,
-                    "department_id":  str(entry.department_id) if entry.department_id else None,
-                })
-            total_chunks += len(chunks)
-
-        store.save(_INDEX_BASE)
-        print(f"[svc07] Full rebuild: {len(entries)} procedures, {total_chunks} chunks")
-        return total_chunks
-    finally:
-        db.close()
+    store.save(_INDEX_BASE)
+    print(f"[svc07] Index ready: {store.vector_count} vectors across {store.unique_documents} documents")
+    return store.vector_count
 
 
 def search(
     query: str,
     top_k: int = 5,
-    stream_target: Optional[str] = None,
+    knowledge_domain: Optional[str] = None,
+    department: Optional[str] = None,
     language: Optional[str] = None,
+    role: Optional[str] = None,
 ) -> list[tuple[float, dict]]:
     q_vec = embedder.embed_one(query)
-    return store.search(q_vec, k=top_k, stream_target=stream_target, language=language)
+    return store.search(
+        q_vec,
+        k=top_k,
+        knowledge_domain=knowledge_domain,
+        department=department,
+        language=language,
+        role=role,
+    )

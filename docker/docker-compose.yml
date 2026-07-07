@@ -70,7 +70,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: aihps_svc03_procedures
-    command: uvicorn services.svc03_procedures.main:app --host 0.0.0.0 --port 8003
+    command: uvicorn services.svc03_procedures.main:app --host 0.0.0.0 --port 8003 --reload
     ports:
       - "8003:8003"
     env_file: ../backend/.env
@@ -78,6 +78,8 @@ services:
       DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    volumes:
+      - ../backend:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -92,7 +94,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: aihps_svc05_analytics
-    command: uvicorn services.svc05_analytics.main:app --host 0.0.0.0 --port 8005
+    command: uvicorn services.svc05_analytics.main:app --host 0.0.0.0 --port 8005 --reload
     ports:
       - "8005:8005"
     env_file: ../backend/.env
@@ -100,6 +102,8 @@ services:
       DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    volumes:
+      - ../backend:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -112,7 +116,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: aihps_svc06_audit
-    command: uvicorn services.svc06_audit.main:app --host 0.0.0.0 --port 8006
+    command: uvicorn services.svc06_audit.main:app --host 0.0.0.0 --port 8006 --reload
     ports:
       - "8006:8006"
     env_file: ../backend/.env
@@ -120,6 +124,8 @@ services:
       DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+    volumes:
+      - ../backend:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -134,7 +140,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: aihps_svc07_kb_sync
-    command: uvicorn services.svc07_kb_sync.main:app --host 0.0.0.0 --port 8007
+    command: uvicorn services.svc07_kb_sync.main:app --host 0.0.0.0 --port 8007 --reload
     ports:
       - "8007:8007"
     env_file: ../backend/.env
@@ -143,7 +149,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
     volumes:
-      - ../backend/kb_index:/app/kb_index
+      - ../backend:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -156,7 +162,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: aihps_svc_agents
-    command: uvicorn agents.main:app --host 0.0.0.0 --port 8020
+    command: uvicorn agents.main:app --host 0.0.0.0 --port 8020 --reload
     ports:
       - "8020:8020"
     env_file: ../backend/.env
@@ -165,7 +171,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
     volumes:
-      - ../backend/kb_index:/app/kb_index
+      - ../backend:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

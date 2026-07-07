@@ -20,11 +20,11 @@ const router = createBrowserRouter([
   { path: '/', element: <PatientSplashPage /> },
 
   /* ─── Auth ─── */
+  { path: 'login',    element: <PatientLoginPage /> },
+  { path: 'register', element: <PatientRegisterPage /> },
   {
     element: <AuthLayout />,
     children: [
-      { path: 'login',           element: <PatientLoginPage /> },
-      { path: 'register',        element: <PatientRegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
     ],
   },

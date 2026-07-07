@@ -101,6 +101,10 @@ const MOCK_USERS: Record<string, User> = {
     id: 'u010', email: 'patient@example.com', full_name: 'Jean-Paul Kamga',
     role: 'patient', is_active: true,
   },
+  'jean-paul.kamga@gmail.com': {
+    id: 'u011', email: 'jean-paul.kamga@gmail.com', full_name: 'Jean-Paul Kamga',
+    role: 'patient', is_active: true,
+  },
 }
 
 function mockDelay() {
@@ -212,7 +216,10 @@ export const staffApi = {
 
 // Uses a relative URL so Vite proxy handles it in dev (/api/pipeline → localhost:8020)
 // and nginx handles it in production (/api/pipeline → svc_agents:8020)
-const pipeline = axios.create({ headers: { 'Content-Type': 'application/json' } })
+const pipeline = axios.create({
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 120_000, // 2 min — LLM calls can take 10-30s
+})
 pipeline.interceptors.request.use((config) => {
   const token = localStorage.getItem('aihps_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
@@ -242,4 +249,85 @@ export interface PipelineQueryResponse {
 export const pipelineApi = {
   query: (payload: PipelineQueryPayload) =>
     pipeline.post<PipelineQueryResponse>('/api/pipeline/query', payload).then((r) => r.data),
+
+  kbStatus: () =>
+    pipeline.get('/api/pipeline/kb-status').then((r) => r.data),
+
+  rebuildKb: () =>
+    pipeline.post('/api/pipeline/rebuild-kb').then((r) => r.data),
+}
+
+// ── Procedures API (SVC-03 via /api/svc03 proxy → localhost:8003) ──────────
+
+const svc03 = axios.create({
+  headers: { 'Content-Type': 'application/json' },
+})
+svc03.interceptors.request.use((config) => {
+  const token = localStorage.getItem('aihps_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+export interface Department {
+  id: string
+  name: string
+  informal_names: string[]
+  services: any[]
+  operating_hours: Record<string, any>
+  location: string | null
+  contact_details: Record<string, any>
+  is_active: boolean
+  last_verified_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Procedure {
+  id: string
+  title: string
+  summary: string | null
+  content: string
+  steps: Record<string, any>[]
+  compliance_annotations: Record<string, any>[]
+  stream_target: string   // 'A' | 'B' | 'both'
+  applicable_roles: string[]
+  risk_level: string      // 'low' | 'medium' | 'high' | 'critical'
+  status: string          // 'draft' | 'pending' | 'published' | 'archived'
+  department_id: string | null
+  category_id: string | null
+  language: string
+  version: number
+  document_url: string | null
+  created_by: string
+  updated_by: string | null
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProcedureList {
+  items: Procedure[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export interface ProcedureFilters {
+  status?: string
+  stream?: string
+  dept_id?: string
+  language?: string
+  skip?: number
+  limit?: number
+}
+
+export const proceduresApi = {
+  list: (filters?: ProcedureFilters) =>
+    svc03.get<ProcedureList>('/api/svc03/procedures/', { params: filters }).then((r) => r.data),
+
+  get: (id: string) =>
+    svc03.get<Procedure>(`/api/svc03/procedures/${id}`).then((r) => r.data),
+
+  listDepartments: (activeOnly = true) =>
+    svc03.get<Department[]>('/api/svc03/departments/', { params: { active_only: activeOnly } }).then((r) => r.data),
 }

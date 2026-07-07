@@ -28,6 +28,15 @@ def _sign(event_type: str, user_id: str | None, entity_id: str | None, ts: str) 
     return hmac.new(_HMAC_KEY, canonical.encode(), hashlib.sha256).hexdigest()
 
 
+def _safe_uuid(value: str | None) -> uuid.UUID | None:
+    if not value:
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError):
+        return None
+
+
 def write_audit_event(db: Session, event: AuditEventIn, ip_address: Optional[str] = None) -> AuditLog:
     ts = event.timestamp or datetime.now(timezone.utc).isoformat()
     sig = _sign(event.event_type, event.user_id, event.entity_id, ts)
@@ -38,9 +47,9 @@ def write_audit_event(db: Session, event: AuditEventIn, ip_address: Optional[str
 
     record = AuditLog(
         event_type=event.event_type,
-        user_id=uuid.UUID(event.user_id) if event.user_id else None,
+        user_id=_safe_uuid(event.user_id),
         entity_type=event.entity_type,
-        entity_id=uuid.UUID(event.entity_id) if event.entity_id else None,
+        entity_id=_safe_uuid(event.entity_id),
         changes=event.changes or {},
         event_metadata=meta,
         ip_address=ip_address,

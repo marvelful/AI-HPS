@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Clinic-Cancellation-Escalation-SOP",
+    "summary": "Standard operating procedure for clinic cancellation and escalation processes.",
+    "department_name": "Outpatients",
+    "stream_target": "both",
+    "risk_level": "high",
+    "language": "EN",
+    "document_url": "https://drive.google.com/file/d/1EUAatbxEVCGbcLy2wwnuBRH04qm9dLkf/view?usp=drive_link",
+    "knowledge_domain": "clinical_procedure"
+  },
+  {
+    "title": "Carriage-and-storage-of-Entonox-by-Midwives",
+    "summary": "Standard operating procedure for the carriage and storage of Entonox by midwives.",
+    "department_name": "Maternity",
+    "stream_target": "both",
+    "risk_level": "high",
+    "language": "EN",
+    "document_url": "https://drive.google.com/file/d/1Q8eSvX7bHSKsBxTwKZniGT7P_DWq8OYM/view?usp=drive_link",
+    "knowledge_domain": "clinical_procedure"
+  },
+  {
+    "title": "cffDNA-Testing-for-Fetal-Rhesus-Status",
+    "summary": "Procedure for cell-free fetal DNA testing for fetal Rhesus status.",
+    "department_name": "Maternity",
+    "stream_target": "both",
+    "risk_level": "high",
+    "language": "EN",
+    "document_url": "https://drive.google.com/file/d/1YFjufOtp4FD7RneF-XTq5wDRahtYp1hL/view?usp=drive_link",
+    "knowledge_domain": "clinical_procedure"
+  },
+  {
+    "title": "Maternity-Triage-SOP",
+    "summary": "Standard operating procedure for maternity triage assessment and management.",
+    "department_name": "Maternity",
+    "stream_target": "both",
+    "risk_level": "critical",
+    "language": "EN",
+    "document_url": "https://drive.google.com/file/d/1at0JsGKgVclm-__HT7kNNNzILn_NyxO9/view?usp=drive_link",
+    "knowledge_domain": "clinical_procedure"
+  },
+  {
+    "title": "Ward-Moves",
+    "summary": "Procedure for the safe transfer and movement of patients between wards.",
+    "department_name": "Hospital Operations",
+    "stream_target": "both",
+    "risk_level": "medium",
+    "language": "EN",
+    "document_url": "https://drive.google.com/file/d/1yTvVr3YyYcKUu4mLISwNMB2EB7INf7UH/view?usp=drive_link",
+    "knowledge_domain": "clinical_procedure"
+  },
+  {
+    "title": "Urology SOP",
+    "summary": "Standard operating procedures for urology clinical services.",
+    "department_name": "Urology",
+    "stream_target": "both",
+    "risk_level": "high",
+    "language": "EN",
+    "document_url": "https://drive.google.com/file/d/1UN1o_lvgi4tyV-oSAjNPhfW1XdA2ycrT/view?usp=drive_link",
+    "knowledge_domain": "clinical_procedure"
+  }
+]

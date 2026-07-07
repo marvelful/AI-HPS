@@ -1,10 +1,9 @@
 """
-AGENT-C — Conversational Agent + Department Information Retrieval.
+AGENT-C — Conversational context agent.
 
-Two responsibilities (FR-C-01–08, FR-DI-01–05):
-  1. information intent → direct dept DB lookup (no LLM)
-  2. chatbot_mode=True → load Redis session, LLM reformulation (Gemini/Mistral),
-     save history, pass reformulated_query to AGENT-P
+Two responsibilities:
+  1. dept_info intent  → look up department in the embedding index (no LLM)
+  2. chatbot_mode=True → load Redis session, LLM-reformulate query, save history
 """
 import json
 from typing import Optional
@@ -17,10 +16,11 @@ from shared.config import get_settings
 
 settings = get_settings()
 
-_REDIS: Optional[redis_lib.Redis] = None
-_SESSION_TTL = 1800  # 30 minutes
-_MAX_HISTORY = 10    # messages kept (sliding window)
+_SESSION_TTL = 1800   # 30 minutes
+_MAX_HISTORY = 10
 _CONFIDENCE_THRESHOLD = 0.60
+
+_REDIS: Optional[redis_lib.Redis] = None
 
 
 def _get_redis() -> redis_lib.Redis:
@@ -30,96 +30,32 @@ def _get_redis() -> redis_lib.Redis:
     return _REDIS
 
 
-def _session_key(session_id: str) -> str:
-    return f"aihps:session:{session_id}"
+def _session_key(sid: str) -> str:
+    return f"aihps:session:{sid}"
 
 
-def _load_history(session_id: str) -> list:
+def _load_history(sid: str) -> list:
     try:
-        raw = _get_redis().get(_session_key(session_id))
-        if raw:
-            return json.loads(raw)
+        raw = _get_redis().get(_session_key(sid))
+        return json.loads(raw) if raw else []
     except Exception:
-        pass
-    return []
+        return []
 
 
-def _save_history(session_id: str, history: list) -> None:
+def _save_history(sid: str, history: list) -> None:
     try:
-        _get_redis().setex(
-            _session_key(session_id),
-            _SESSION_TTL,
-            json.dumps(history[-_MAX_HISTORY:]),
-        )
+        _get_redis().setex(_session_key(sid), _SESSION_TTL, json.dumps(history[-_MAX_HISTORY:]))
     except Exception as exc:
         print(f"[agent_c] Session save failed: {exc}")
 
 
 _REFORMULATION_PROMPT = (
-    "You are a clinical query assistant in a hospital system. "
-    "Reformulate the user's question into a precise, searchable medical query.\n"
-    "Rules:\n"
-    "- Do NOT add clinical assumptions or change medical intent\n"
-    "- Preserve all clinical specifics (medications, conditions, procedures)\n"
-    "- Output a clean, unambiguous search query\n"
-    "- If the intent is already clear, return it as-is\n"
-    "Respond ONLY with JSON: {\"reformulated_query\": \"...\", \"confidence\": 0.0}"
+    "You are a clinical query assistant in a hospital knowledge system. "
+    "Reformulate the user's question into a precise, searchable query. "
+    "Rules: do NOT add clinical assumptions; preserve all medical specifics; "
+    "output a clean, unambiguous search query; if the intent is already clear, return it as-is. "
+    "JSON only: {\"reformulated_query\": \"...\", \"confidence\": 0.0}"
 )
-
-
-def _extract_json(text: str) -> dict:
-    """Strip markdown fences then parse JSON; raise on failure."""
-    import re as _re
-    text = _re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=_re.DOTALL)
-    return json.loads(text)
-
-
-def _reformulate(query: str, history: list) -> tuple[str, float]:
-    grok_key = settings.XAI_API_KEY
-    gemini_key = settings.GEMINI_API_KEY
-
-    chat_messages = [{"role": "system", "content": _REFORMULATION_PROMPT}]
-    chat_messages.extend(history[-6:])
-    chat_messages.append({"role": "user", "content": query})
-
-    # Try Grok (xAI) first
-    if grok_key:
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=grok_key, base_url="https://api.x.ai/v1")
-            resp = client.chat.completions.create(
-                model="grok-3",
-                messages=chat_messages,
-                max_tokens=120,
-                temperature=0,
-            )
-            data = _extract_json(resp.choices[0].message.content)
-            return data.get("reformulated_query", query), float(data.get("confidence", 1.0))
-        except Exception as exc:
-            print(f"[agent_c] Grok reformulation failed: {exc}")
-
-    # Fallback to Gemini
-    if gemini_key:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=gemini_key)
-            model = genai.GenerativeModel(
-                "gemini-1.5-flash",
-                generation_config={"response_mime_type": "application/json"},
-            )
-            full_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in chat_messages])
-            resp = model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(max_output_tokens=120, temperature=0),
-            )
-            data = _extract_json(resp.text)
-            return data.get("reformulated_query", query), float(data.get("confidence", 1.0))
-        except Exception as exc:
-            print(f"[agent_c] Gemini reformulation failed: {exc}")
-
-    # Fallback to original query
-    return query, 1.0
-
 
 _CLARIFY = {
     "EN": "Could you clarify your question? More details will help me give you a better answer.",
@@ -127,34 +63,70 @@ _CLARIFY = {
 }
 
 
+def _extract_json(text: str) -> dict:
+    import re
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
+    return json.loads(text)
+
+
+def _reformulate(query: str, history: list) -> tuple[str, float]:
+    msgs = list(history[-6:])
+    msgs.append({"role": "user", "content": query})
+    try:
+        from agents.shared.groq_client import call_groq
+        raw = call_groq(msgs, system=_REFORMULATION_PROMPT, max_tokens=120, temperature=0)
+        d = _extract_json(raw)
+        return d.get("reformulated_query", query), float(d.get("confidence", 1.0))
+    except Exception as exc:
+        print(f"[agent_c] Reformulation failed: {exc}")
+    return query, 1.0
+
+
 def agent_c(state: AIHPSState) -> dict:
     intent = state.get("intent")
     language = state.get("language", "EN")
     query = state.get("raw_query", "")
 
-    # ── Path 1: department information lookup (no LLM) ────────────────────────
-    if intent == "information":
-        dept = find_department(query, threshold=0.65)
+    # ── Path 1: department info lookup ───────────────────────────────────────
+    if intent == "dept_info":
+        try:
+            dept = find_department(query, threshold=0.65)
+        except Exception as exc:
+            print(f"[agent_c] find_department error: {exc}")
+            dept = None
         if dept:
-            return {"dept_info": dept}
+            # Format dept info as a procedure_result so agent_o can render it
+            hours = dept.get("operating_hours") or {}
+            contacts = dept.get("contact_details") or {}
+            summary = (
+                f"{dept.get('name', 'Department')}\n"
+                f"Location: {dept.get('location') or 'N/A'}\n"
+                f"Hours: {hours}\nContact: {contacts}"
+            )
+            return {
+                "procedure_result": {
+                    "found": True,
+                    "data": {"answer": summary, "source": "", "disclaimer": ""},
+                },
+                "had_result": True,
+            }
         return {
-            "dept_info": {
+            "procedure_result": {
                 "found": False,
                 "message": (
-                    "Department not found. Please contact the main reception for assistance."
+                    "Department not found. Please contact main reception."
                     if language == "EN"
                     else "Département non trouvé. Veuillez contacter l'accueil principal."
                 ),
-            }
+            },
+            "had_result": False,
         }
 
-    # ── Path 2: chatbot query reformulation ───────────────────────────────────
+    # ── Path 2: chatbot query reformulation ──────────────────────────────────
     session_id = state.get("session_id") or ""
     history = _load_history(session_id) if session_id else []
 
     reformulated, confidence = _reformulate(query, history)
-
-    # Add user turn before deciding
     history.append({"role": "user", "content": query})
 
     if confidence < _CONFIDENCE_THRESHOLD:

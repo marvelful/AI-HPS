@@ -7,6 +7,10 @@ VALID_STREAMS   = {"A", "B", "both"}
 VALID_RISK      = {"low", "medium", "high", "critical"}
 VALID_LANGUAGES = {"EN", "FR"}
 VALID_DECISIONS = {"approved", "rejected"}
+VALID_DOMAINS   = {
+    "clinical_procedure", "administrative", "emergency",
+    "department_info", "who_guideline", "public_faq", "policy",
+}
 
 
 # ── Department ──────────────────────────────────────────────────────────────
@@ -106,12 +110,21 @@ class ProcedureCreate(BaseModel):
     content: str
     steps: list[dict] = []
     compliance_annotations: list[dict] = []
+    knowledge_domain: str = "clinical_procedure"
     stream_target: str = "both"
     applicable_roles: list[str] = []
     risk_level: str = "low"
     department_id: uuid.UUID | None = None
     category_id: uuid.UUID | None = None
     language: str = "EN"
+    document_url: str | None = None
+
+    @field_validator("knowledge_domain")
+    @classmethod
+    def chk_domain(cls, v: str) -> str:
+        if v not in VALID_DOMAINS:
+            raise ValueError(f"knowledge_domain must be one of {VALID_DOMAINS}")
+        return v
 
     @field_validator("stream_target")
     @classmethod
@@ -141,11 +154,13 @@ class ProcedureUpdate(BaseModel):
     content: str | None = None
     steps: list[dict] | None = None
     compliance_annotations: list[dict] | None = None
+    knowledge_domain: str | None = None
     stream_target: str | None = None
     applicable_roles: list[str] | None = None
     risk_level: str | None = None
     department_id: uuid.UUID | None = None
     category_id: uuid.UUID | None = None
+    document_url: str | None = None
 
 
 class ProcedureResponse(BaseModel):
@@ -155,6 +170,7 @@ class ProcedureResponse(BaseModel):
     content: str
     steps: list[dict]
     compliance_annotations: list[dict]
+    knowledge_domain: str
     stream_target: str
     applicable_roles: list[str]
     risk_level: str
@@ -163,6 +179,7 @@ class ProcedureResponse(BaseModel):
     category_id: uuid.UUID | None
     language: str
     version: int
+    document_url: str | None
     created_by: uuid.UUID
     updated_by: uuid.UUID | None
     published_at: datetime | None

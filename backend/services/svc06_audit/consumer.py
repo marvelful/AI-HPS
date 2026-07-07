@@ -26,8 +26,9 @@ def _on_message(channel, method, _properties, body):
         service.write_audit_event(db, event)
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
-        print(f"[svc06-consumer] Failed to process message: {exc}")
-        channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        print(f"[svc06-consumer] Discarding bad message: {exc}")
+        # requeue=False — permanent parse/schema errors will never succeed; don't loop forever
+        channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
     finally:
         db.close()
 

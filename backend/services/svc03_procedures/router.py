@@ -16,7 +16,7 @@ router = APIRouter(tags=["procedures"])
 
 # ── Departments ──────────────────────────────────────────────────────────────
 
-@router.get("/departments/", response_model=list[schemas.DepartmentResponse])
+@router.get("/departments", response_model=list[schemas.DepartmentResponse])
 def list_departments(
     active_only: bool = True,
     db: Session = Depends(get_db),
@@ -25,7 +25,7 @@ def list_departments(
     return service.list_departments(db, active_only)
 
 
-@router.post("/departments/", response_model=schemas.DepartmentResponse, status_code=201)
+@router.post("/departments", response_model=schemas.DepartmentResponse, status_code=201)
 def create_department(
     body: schemas.DepartmentCreate,
     bg: BackgroundTasks,
@@ -81,12 +81,12 @@ def verify_department(
 
 # ── Categories ───────────────────────────────────────────────────────────────
 
-@router.get("/categories/", response_model=list[schemas.CategoryResponse])
+@router.get("/categories", response_model=list[schemas.CategoryResponse])
 def list_categories(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     return service.list_categories(db)
 
 
-@router.post("/categories/", response_model=schemas.CategoryResponse, status_code=201)
+@router.post("/categories", response_model=schemas.CategoryResponse, status_code=201)
 def create_category(
     body: schemas.CategoryCreate,
     bg: BackgroundTasks,
@@ -103,7 +103,7 @@ def create_category(
 
 # ── Navigation Paths ─────────────────────────────────────────────────────────
 
-@router.get("/navigation/", response_model=list[schemas.NavigationPathResponse])
+@router.get("/navigation", response_model=list[schemas.NavigationPathResponse])
 def list_navigation(
     dept_id: Optional[uuid.UUID] = None,
     language: Optional[str] = None,
@@ -113,7 +113,7 @@ def list_navigation(
     return service.list_navigation_paths(db, dept_id, language)
 
 
-@router.post("/navigation/", response_model=schemas.NavigationPathResponse, status_code=201)
+@router.post("/navigation", response_model=schemas.NavigationPathResponse, status_code=201)
 def create_navigation(
     body: schemas.NavigationPathCreate,
     bg: BackgroundTasks,
@@ -161,7 +161,7 @@ def delete_navigation(
 
 # ── Procedures — CRUD ────────────────────────────────────────────────────────
 
-@router.get("/procedures/", response_model=schemas.ProcedureListResponse)
+@router.get("/procedures", response_model=schemas.ProcedureListResponse)
 def list_procedures(
     proc_status: Optional[str] = Query(None, alias="status"),
     stream: Optional[str] = None,
@@ -176,7 +176,7 @@ def list_procedures(
     return schemas.ProcedureListResponse(items=items, total=total, skip=skip, limit=limit)
 
 
-@router.post("/procedures/", response_model=schemas.ProcedureResponse, status_code=201)
+@router.post("/procedures", response_model=schemas.ProcedureResponse, status_code=201)
 def create_procedure(
     body: schemas.ProcedureCreate,
     bg: BackgroundTasks,

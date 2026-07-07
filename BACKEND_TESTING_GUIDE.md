@@ -571,4 +571,6 @@ Each service exposes Swagger UI for interactive browser-based testing:
 
 ---
 
+uvicorn agents.main:app --port 8020 --reload
+
 *End of AI-HPS Backend Testing Guide*

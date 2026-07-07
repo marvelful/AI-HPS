@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  backend:
+    name: Backend syntax check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Python modules
+        run: python -m compileall agents ingestion scripts services shared check_setup.py create_superadmin.py run_dev.py
+
+  staffadmin-pwa:
+    name: Staff/Admin PWA build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-aihps/ai_hps-staffadmin pwa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend-aihps/ai_hps-staffadmin pwa/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  patient-mobile:
+    name: Patient mobile build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-aihps/ai_hps_patient mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend-aihps/ai_hps_patient mobile/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build mobile web export
+        run: npm run build:mobile
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build Android debug APK
+        working-directory: frontend-aihps/ai_hps_patient mobile/android
+        run: ./gradlew assembleDebug --no-daemon --console=plain
+
+      - name: Upload Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-hps-patient-debug-apk
+          path: frontend-aihps/ai_hps_patient mobile/android/app/build/outputs/apk/debug/app-debug.apk

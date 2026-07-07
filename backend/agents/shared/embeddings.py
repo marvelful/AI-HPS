@@ -40,6 +40,11 @@ def load(force: bool = False) -> None:
         db = SessionLocal()
         try:
             depts = db.query(Department).filter(Department.is_active == True).all()
+        except Exception as exc:
+            print(f"[embeddings] DB load failed (non-fatal): {exc}")
+            _dept_records = []
+            _dept_vecs = np.zeros((0, 384), dtype=np.float32)
+            return
         finally:
             db.close()
 

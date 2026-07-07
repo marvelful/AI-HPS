@@ -16,6 +16,13 @@ export default defineConfig({
         target: 'http://localhost:8020',
         rewrite: (path) => path.replace(/^\/api\/pipeline/, '/pipeline'),
         changeOrigin: true,
+        proxyTimeout: 120_000,
+        timeout: 120_000,
+      },
+      '/api/svc03': {
+        target: 'http://localhost:8003',
+        rewrite: (path) => path.replace(/^\/api\/svc03/, ''),
+        changeOrigin: true,
       },
     },
   },

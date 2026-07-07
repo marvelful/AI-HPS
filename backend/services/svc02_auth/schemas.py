@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     department_id: uuid.UUID | None
     phone: str | None = None
     date_of_birth: date | None = None
+    language: str | None = None
     is_active: bool
     last_login: datetime | None
     created_at: datetime

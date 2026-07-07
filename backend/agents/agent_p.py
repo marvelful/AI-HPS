@@ -1,270 +1,240 @@
 """
-AGENT-P — Procedure Intelligence Agent.
+AGENT-P — Procedure & Knowledge Retrieval Agent.
 
-Hard constraints:
-  - Internal content filters applied before every retrieval (stream_target, role, status)
-  - Similarity threshold 0.40: no answer generated below it
-  - LLM (Gemini/Mistral) grounds output strictly in retrieved content
-  - Stream A: no role filter; Stream B: applicable_roles filter applied
+Retrieval strategy:
+  1. Semantic search  → svc07_kb_sync vector store  (weight 0.7)
+  2. Full-text search → PostgreSQL knowledge_chunks  (weight 0.3)
+  3. Merge, threshold, take top-K
+  4. LLM grounded generation (Groq, fallback Gemini)
+
+Stream A → patient-friendly answer with key steps and when-to-seek-help.
+Stream B → clinical detail with steps, compliance notes, risk level.
 """
 import json
 import re
-import threading
-from datetime import datetime, timezone
 from typing import Optional
 
 from agents.state import AIHPSState
 from shared.config import get_settings
-from shared.database import SessionLocal
 
 settings = get_settings()
 
-_THRESHOLD = 0.40
+_NO_RESULT = {
+    "EN": (
+        "No matching information was found in the hospital knowledge base. "
+        "Please consult a healthcare professional or contact the relevant department directly."
+    ),
+    "FR": (
+        "Aucune information correspondante n'a été trouvée dans la base de connaissances. "
+        "Veuillez consulter un professionnel de santé ou contacter directement le département concerné."
+    ),
+}
+
+# ── RAG prompts ───────────────────────────────────────────────────────────────
+
+_SYSTEM_A = (
+    "You are a hospital knowledge assistant for Hôpital Général de Douala, helping patients and visitors. "
+    "Answer the question ONLY using the provided knowledge chunks. "
+    "Be clear, simple and reassuring. Never speculate. "
+    "Always cite the source document. "
+    "JSON only (no markdown fences):\n"
+    '{"disclaimer":"This information is for guidance only. Always follow medical staff instructions.",'
+    '"answer":"...","key_steps":["..."],"when_to_seek_help":"...","source":"..."}'
+)
+
+_SYSTEM_B = (
+    "You are a clinical knowledge assistant for hospital staff at Hôpital Général de Douala. "
+    "Answer ONLY from the provided knowledge chunks. Include all relevant clinical details. "
+    "Never speculate beyond the source content. "
+    "JSON only (no markdown fences):\n"
+    '{"disclaimer":"AI-assisted summary. Verify against official procedure documents.",'
+    '"answer":"...","steps":[{"step":1,"instruction":"..."}],'
+    '"compliance_notes":["..."],"risk_level":"...","source":"..."}'
+)
 
 
-# ── Filter builder ────────────────────────────────────────────────────────────
+# ── Search ────────────────────────────────────────────────────────────────────
 
-def _build_filters(state: AIHPSState) -> dict:
-    return {
-        "stream": state.get("stream", "A"),
-        "user_role": state.get("user_role") if state.get("stream") == "B" else None,
-        "language": state.get("language", "EN"),
-    }
-
-
-# ── Semantic search (via SVC-07) ──────────────────────────────────────────────
-
-def _semantic_search(query: str, filters: dict, top_k: int = 20) -> list[tuple[float, dict]]:
+def _semantic_search(query: str, language: Optional[str], top_k: int) -> list[tuple[float, dict]]:
     try:
         from services.svc07_kb_sync.service import search
-        results = search(
-            query,
-            top_k=top_k,
-            stream_target=filters["stream"],
-            language=filters["language"],
-        )
-        # Role filter for Stream B
-        role = filters.get("user_role")
-        if role:
-            results = [
-                (score, meta) for score, meta in results
-                if not meta.get("applicable_roles") or role in meta["applicable_roles"]
-            ]
-        return results
+        return search(query, top_k=top_k, language=language)
     except Exception as exc:
         print(f"[agent_p] Semantic search error: {exc}")
         return []
 
 
-# ── Full-text search (PostgreSQL TSVECTOR) ────────────────────────────────────
+def _translate_to_en(text: str) -> str:
+    """Translate a non-English query to English via Groq so FTS can match English documents."""
+    try:
+        from agents.shared.groq_client import call_groq
+        result = call_groq(
+            messages=[{"role": "user", "content": f"Translate to English (output the translation only, no explanation):\n{text}"}],
+            max_tokens=120,
+            temperature=0,
+        )
+        return result.strip()
+    except Exception:
+        return text
 
-def _fts_search(query: str, filters: dict, top_k: int = 10) -> list[dict]:
+
+def _fts_search(query: str, language: Optional[str], top_k: int) -> list[dict]:
     from sqlalchemy import text as sql_text
-    stream = filters["stream"]
-    language = filters["language"]
-    role = filters.get("user_role")
+    from shared.database import SessionLocal
 
-    safe_query = re.sub(r"[^\w\s]", " ", query).strip() or "hospital"
+    # FR queries need English keywords to match the English-language document KB
+    search_query = _translate_to_en(query) if language == "FR" else query
+    safe_q = re.sub(r"[^\w\s]", " ", search_query).strip() or "hospital procedure"
+
     sql = """
-        SELECT id, title, content, summary, steps, risk_level, applicable_roles,
-               stream_target, department_id,
-               ts_rank(search_vector, plainto_tsquery(:query)) AS rank
-        FROM aihps_procedures.procedure_entries
-        WHERE status = 'published'
-          AND stream_target IN ('both', :stream)
-          AND search_vector @@ plainto_tsquery(:query)
+        SELECT chunk_id, title, content, section, knowledge_domain,
+               department, language, citation, page,
+               ts_rank(search_vector, plainto_tsquery(:q)) AS rank
+        FROM aihps_procedures.knowledge_chunks
+        WHERE approval_status = 'approved'
+          AND search_vector @@ plainto_tsquery(:q)
         ORDER BY rank DESC
         LIMIT :top_k
     """
     db = SessionLocal()
     try:
-        rows = db.execute(
-            sql_text(sql),
-            {"query": safe_query, "stream": stream, "top_k": top_k},
-        ).fetchall()
-        results = []
-        for row in rows:
-            applicable_roles = row.applicable_roles or []
-            if stream == "B" and role and applicable_roles and role not in applicable_roles:
-                continue
-            results.append({
-                "entry_id": str(row.id),
-                "title": row.title,
-                "content": (row.content or "")[:1500],
-                "summary": row.summary,
-                "steps": row.steps or [],
-                "risk_level": row.risk_level,
-                "department_id": str(row.department_id) if row.department_id else None,
-                "fts_rank": float(row.rank),
-            })
-        return results
+        rows = db.execute(sql_text(sql), {"q": safe_q, "top_k": top_k}).fetchall()
+        return [
+            {
+                "chunk_id":        r.chunk_id,
+                "title":           r.title,
+                "content":         r.content[:1000],
+                "section":         r.section,
+                "knowledge_domain": r.knowledge_domain,
+                "department":      r.department,
+                "language":        r.language,
+                "citation":        r.citation,
+                "page":            r.page,
+                "fts_rank":        float(r.rank),
+            }
+            for r in rows
+        ]
     except Exception as exc:
-        print(f"[agent_p] FTS search error: {exc}")
+        print(f"[agent_p] FTS error: {exc}")
         return []
     finally:
         db.close()
 
 
-# ── Result merge (0.7 semantic + 0.3 FTS) ────────────────────────────────────
-
 def _merge(
     semantic: list[tuple[float, dict]],
     fts: list[dict],
-    top_k: int = 5,
+    top_k: int,
+    min_score: float,
 ) -> list[dict]:
     merged: dict[str, dict] = {}
 
     for score, meta in semantic:
-        eid = meta["entry_id"]
-        if eid not in merged:
-            merged[eid] = {"entry_id": eid, "score": 0.0, "meta": meta}
-        merged[eid]["score"] += 0.7 * score
+        cid = meta.get("chunk_id", "")
+        if not cid:
+            continue
+        merged.setdefault(cid, {"meta": meta, "score": 0.0})
+        merged[cid]["score"] += 0.7 * score
 
     max_fts = max((r["fts_rank"] for r in fts), default=1.0) or 1.0
     for row in fts:
-        eid = row["entry_id"]
+        cid = row.get("chunk_id", "")
         norm = row["fts_rank"] / max_fts
-        if eid not in merged:
-            merged[eid] = {"entry_id": eid, "score": 0.0, "meta": row}
-        merged[eid]["score"] += 0.3 * norm
+        if cid not in merged:
+            merged[cid] = {"meta": row, "score": 0.0}
+        merged[cid]["score"] += 0.3 * norm
 
     ranked = sorted(merged.values(), key=lambda x: x["score"], reverse=True)
-    return ranked[:top_k]
+    return [r for r in ranked if r["score"] >= min_score][:top_k]
 
 
-# ── LLM generation ────────────────────────────────────────────────────────────
+# ── Generation ────────────────────────────────────────────────────────────────
 
-_PROMPT_A = (
-    "You are a hospital information assistant for patients and visitors. "
-    "Answer ONLY from the provided procedure content. Be clear and concise.\n"
-    "RULES: Ground every statement in the retrieved content. No speculation.\n"
-    "Respond in {language} with JSON (escape all braces in your response):\n"
-    '{{"disclaimer":"This information is for guidance only. Always follow medical staff instructions.",'
-    '"summary":"...","key_steps":["..."],"when_to_seek_help":"..."}}'
-)
-
-_PROMPT_B = (
-    "You are a clinical procedure assistant for hospital staff. "
-    "Provide a structured response grounded ONLY in the retrieved procedure content.\n"
-    "RULES: No speculation. Include all approvals and compliance notes from the content.\n"
-    "Respond in {language} with JSON:\n"
-    '{{"disclaimer":"AI-assisted summary. Verify against official procedure documents.",'
-    '"summary":"...","steps":[{{"step":1,"instruction":"...","approval_required":false}}],'
-    '"compliance_notes":["..."],"risk_level":"...","escalation":"...","citations":["..."]}}'
-)
-
-
-def _extract_json(text: str) -> dict:
-    """Strip markdown fences then parse JSON; raise on failure."""
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
-    return json.loads(text)
+def _build_context(chunks: list[dict]) -> str:
+    parts = []
+    for i, c in enumerate(chunks, 1):
+        meta = c["meta"]
+        parts.append(
+            f"[Source {i}] {meta.get('title', '')} — "
+            f"{meta.get('department', '')} (page {meta.get('page', '?')})\n"
+            f"{meta.get('content', '')}"
+        )
+    return "\n\n---\n\n".join(parts)
 
 
 def _generate(query: str, chunks: list[dict], stream: str, language: str) -> dict:
-    grok_key = settings.XAI_API_KEY
-    gemini_key = settings.GEMINI_API_KEY
-    system = (_PROMPT_B if stream == "B" else _PROMPT_A).format(language=language)
+    from agents.shared.groq_client import call_groq, GroqError
 
-    context = "\n\n---\n\n".join(
-        f"[{i+1}] {c['meta'].get('title', 'Procedure')}\n"
-        f"{c['meta'].get('chunk_text', c['meta'].get('content', ''))}"
-        for i, c in enumerate(chunks)
+    system = _SYSTEM_B if stream == "B" else _SYSTEM_A
+    context = _build_context(chunks)
+    user_msg = (
+        f"Question: {query}\n\n"
+        f"Knowledge chunks:\n{context[:3500]}\n\n"
+        f"Respond in {'French' if language == 'FR' else 'English'}."
     )
-    user_msg = f"Query: {query}\n\nRetrieved content:\n{context[:4000]}"
 
-    last_error = "No LLM API key configured."
+    try:
+        raw = call_groq(
+            messages=[{"role": "user", "content": user_msg}],
+            system=system,
+            temperature=settings.TEMPERATURE,
+            max_tokens=settings.MAX_TOKENS,
+        )
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.DOTALL)
+        return json.loads(raw)
+    except GroqError as exc:
+        print(f"[agent_p] Groq generation error: {exc}")
+    except (json.JSONDecodeError, ValueError) as exc:
+        print(f"[agent_p] JSON parse error: {exc}")
 
-    # Try Grok (xAI) first
-    if grok_key:
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=grok_key, base_url="https://api.x.ai/v1")
-            resp = client.chat.completions.create(
-                model="grok-3",
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user_msg},
-                ],
-                max_tokens=1200,
-                temperature=0,
-            )
-            return _extract_json(resp.choices[0].message.content)
-        except Exception as exc:
-            last_error = f"Grok: {exc}"
-            print(f"[agent_p] Grok generation error: {exc}")
-
-    # Fallback to Gemini
-    if gemini_key:
+    # Gemini fallback
+    if settings.GEMINI_API_KEY:
         try:
             import google.generativeai as genai
-            genai.configure(api_key=gemini_key)
+            genai.configure(api_key=settings.GEMINI_API_KEY)
             model = genai.GenerativeModel(
                 "gemini-1.5-flash",
                 generation_config={"response_mime_type": "application/json"},
             )
-            full_prompt = f"{system}\n\n{user_msg}"
             resp = model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(max_output_tokens=1200, temperature=0),
+                f"{system}\n\n{user_msg}",
+                generation_config=genai.types.GenerationConfig(max_output_tokens=800, temperature=0),
             )
-            return _extract_json(resp.text)
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", resp.text.strip(), flags=re.DOTALL)
+            return json.loads(raw)
         except Exception as exc:
-            last_error = f"Gemini: {exc}"
-            print(f"[agent_p] Gemini generation error: {exc}")
+            print(f"[agent_p] Gemini fallback error: {exc}")
 
-    # Raw content fallback — surface the real error so it's visible in the response
+    # Raw content fallback
     top = chunks[0]["meta"]
     return {
-        "disclaimer": f"AI generation unavailable — {last_error}",
-        "summary": (top.get("chunk_text") or top.get("content") or "")[:600],
+        "answer": top.get("content", "")[:600],
+        "source": top.get("citation", ""),
+        "disclaimer": "AI generation unavailable — showing raw source content.",
     }
 
 
 # ── Agent node ────────────────────────────────────────────────────────────────
 
-_NO_RESULT = {
-    "EN": "No matching procedure found. Please consult a healthcare professional or contact the department.",
-    "FR": "Aucune procédure trouvée. Veuillez consulter un professionnel de santé ou contacter le département.",
-}
-
-
-# ── Content gap tracker ───────────────────────────────────────────────────────
-
-def _write_gap(query: str) -> None:
-    from shared.models.analytics import ContentGap
-    db = SessionLocal()
-    try:
-        now = datetime.now(timezone.utc)
-        existing = db.query(ContentGap).filter(ContentGap.query == query).first()
-        if existing:
-            existing.occurrence_count += 1
-            existing.last_seen = now
-        else:
-            db.add(ContentGap(query=query, occurrence_count=1, first_seen=now, last_seen=now))
-        db.commit()
-    except Exception as exc:
-        print(f"[agent_p] Content gap log failed (non-fatal): {exc}")
-    finally:
-        db.close()
-
-
-def _log_content_gap(query: str) -> None:
-    threading.Thread(target=_write_gap, args=(query[:500],), daemon=True).start()
-
-
 def agent_p(state: AIHPSState) -> dict:
     query = state.get("reformulated_query") or state.get("raw_query", "")
-    stream = state.get("stream", "A")
     language = state.get("language", "EN")
+    stream = state.get("stream", "A")
+    top_k = settings.RAG_TOP_K
+    # Cross-lingual queries score slightly lower — be a bit more lenient for FR
+    min_score = settings.RAG_MIN_SIMILARITY * 0.8 if language == "FR" else settings.RAG_MIN_SIMILARITY
 
-    filters = _build_filters(state)
-    semantic = _semantic_search(query, filters)
-    fts = _fts_search(query, filters)
-    top_chunks = _merge(semantic, fts, top_k=5)
+    # Pass language=None so the multilingual model returns results regardless of
+    # how the chunk language field was stored (en/EN/english/etc.)
+    semantic = _semantic_search(query, None, top_k * 3)
+    fts = _fts_search(query, language, top_k * 2)
+    top_chunks = _merge(semantic, fts, top_k=top_k, min_score=min_score)
 
-    # Hard threshold check
-    if not top_chunks or top_chunks[0]["score"] < _THRESHOLD:
-        _log_content_gap(query)
+    # If nothing passes the threshold, relax it once before giving up
+    if not top_chunks and semantic:
+        top_chunks = _merge(semantic, fts, top_k=top_k, min_score=min_score * 0.5)
+
+    if not top_chunks:
         return {
             "procedure_result": {
                 "found": False,
@@ -274,14 +244,9 @@ def agent_p(state: AIHPSState) -> dict:
         }
 
     generated = _generate(query, top_chunks, stream, language)
-    risk = top_chunks[0]["meta"].get("risk_level", "low")
 
     return {
-        "procedure_result": {
-            "found": True,
-            "data": generated,
-            "top_entry_id": top_chunks[0]["entry_id"],
-            "risk_level": risk,
-        },
+        "retrieved_chunks": [c["meta"] for c in top_chunks],
+        "procedure_result": {"found": True, "data": generated},
         "had_result": True,
     }

@@ -47,7 +47,7 @@ function riskColor(level?: string) {
 }
 
 function formatOutput(res: PipelineQueryResponse): { text: string; structured?: StreamBData; isEmergency: boolean } {
-  const { output, is_emergency, had_result, error } = res
+  const { output, is_emergency, error } = res
 
   if (error) return { text: `Error: ${error}`, isEmergency: false }
 
@@ -58,7 +58,7 @@ function formatOutput(res: PipelineQueryResponse): { text: string; structured?: 
     return { text: msg, isEmergency: true }
   }
 
-  if (!had_result || !output) {
+  if (!output) {
     return {
       text: 'No matching procedure found in the knowledge base. Check the procedure library or contact the clinical documentation team.',
       isEmergency: false,
@@ -67,27 +67,40 @@ function formatOutput(res: PipelineQueryResponse): { text: string; structured?: 
 
   if (typeof output === 'string') return { text: output, isEmergency: false }
 
+  // Not found — backend provides a specific message
   if (output.found === false) {
     return { text: output.message ?? 'Not found in knowledge base.', isEmergency: false }
   }
 
-  if (output.found === true) {
-    let text = output.name ?? ''
-    if (output.description) text += `\n${output.description}`
-    if (output.location)    text += `\nLocation: ${output.location}`
-    if (output.phone)       text += `\nPhone: ${output.phone}`
+  // Procedure result — {found: true, data: {summary, steps, compliance_notes, ...}}
+  if (output.found === true && output.data) {
+    const d: StreamBData = output.data
+    return { text: d.summary ?? 'Procedure found.', structured: d, isEmergency: false }
+  }
+
+  // Navigation result — {found: true, department, steps, ...}
+  if (output.found === true && output.department) {
+    let text = `Directions to ${output.department}`
+    if (output.estimated_time_minutes) text += ` (${output.estimated_time_minutes} min)`
+    if (output.steps?.length) {
+      text += '\n' + output.steps.map((s: any, i: number) => `${i + 1}. ${s.instruction ?? s}`).join('\n')
+    }
     return { text: text.trim(), isEmergency: false }
   }
 
-  if (output.data) {
-    const d: StreamBData = output.data
-    return {
-      text: d.summary ?? 'Procedure found.',
-      structured: d,
-      isEmergency: false,
+  // Department info — {found: true, name, location, hours, contact}
+  if (output.found === true && output.name) {
+    let text = output.name
+    if (output.location) text += `\nLocation: ${output.location}`
+    if (output.hours) {
+      const h = output.hours
+      const str = typeof h === 'object' ? Object.entries(h).map(([k, v]) => `${k}: ${v}`).join(' | ') : String(h)
+      if (str) text += `\nHours: ${str}`
     }
+    return { text: text.trim(), isEmergency: false }
   }
 
+  // Fallback
   if (output.message) return { text: output.message, isEmergency: false }
   if (output.summary) return { text: output.summary, isEmergency: false }
 
@@ -169,14 +182,17 @@ function StructuredResult({ data }: { data: StreamBData }) {
 
 function TypingDots() {
   return (
-    <div className="flex gap-1.5 items-center py-1">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-2 h-2 rounded-full bg-hgd-blue/40"
-          style={{ animation: 'bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }}
-        />
-      ))}
+    <div className="flex flex-col gap-1 py-1">
+      <div className="flex gap-1.5 items-center">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="w-2 h-2 rounded-full bg-hgd-blue/40"
+            style={{ animation: 'bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }}
+          />
+        ))}
+      </div>
+      <span className="text-[10px] text-slate-400">Searching knowledge base…</span>
     </div>
   )
 }

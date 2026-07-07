@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from shared.config import get_settings
-from shared.models.auth import LockoutRecord, OtpCode, TokenBlacklist, User
+from shared.models.auth import Admin, LockoutRecord, OtpCode, Patient, Staff, TokenBlacklist, User
 from services.svc02_auth.schemas import (
     AdminResetPasswordRequest,
     CreateUserRequest,
@@ -40,7 +40,7 @@ def get_token_expire_minutes(role: str) -> int:
     return settings.ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN if role in ADMIN_ROLES else settings.ACCESS_TOKEN_EXPIRE_MINUTES_STAFF
 
 
-def create_access_token(user: User, expire_minutes: int) -> tuple[str, str, datetime]:
+def create_access_token(user: User, expire_minutes: int, user_type: str | None = None) -> tuple[str, str, datetime]:
     jti = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=expire_minutes)
@@ -52,8 +52,104 @@ def create_access_token(user: User, expire_minutes: int) -> tuple[str, str, date
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
     }
+    if user_type:
+        payload["user_type"] = user_type
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return token, jti, exp
+
+
+# ── Multi-table authentication helpers ────────────────────────────────────────
+
+def _authenticate_from_table(db: Session, model, email: str, password: str, lockout_model=None) -> tuple:
+    """Generic authenticate against any user-like table."""
+    entity = db.query(model).filter(model.email == email).first()
+    if not entity:
+        return None, "Invalid credentials"
+
+    if not entity.is_active:
+        return None, "Account is deactivated. Contact your administrator."
+
+    now = datetime.now(timezone.utc)
+    if entity.lockout_until and entity.lockout_until.replace(tzinfo=timezone.utc) > now:
+        remaining = int((entity.lockout_until.replace(tzinfo=timezone.utc) - now).total_seconds() / 60) + 1
+        return None, f"Account locked due to too many failed attempts. Try again in {remaining} minute(s)."
+
+    if not verify_password(password, entity.password_hash):
+        entity.failed_attempts += 1
+        if entity.failed_attempts >= settings.MAX_LOGIN_ATTEMPTS:
+            entity.lockout_until = now + timedelta(minutes=settings.LOCKOUT_MINUTES)
+        db.commit()
+        return None, "Invalid credentials"
+
+    entity.failed_attempts = 0
+    entity.lockout_until = None
+    entity.last_login = now
+    db.commit()
+    return entity, ""
+
+
+def authenticate_patient(db: Session, email: str, password: str) -> tuple[Optional[Patient], str]:
+    return _authenticate_from_table(db, Patient, email, password)
+
+
+def authenticate_staff(db: Session, email: str, password: str) -> tuple[Optional[Staff], str]:
+    return _authenticate_from_table(db, Staff, email, password)
+
+
+def authenticate_admin(db: Session, email: str, password: str) -> tuple[Optional[Admin], str]:
+    return _authenticate_from_table(db, Admin, email, password)
+
+
+def create_staff_member(db: Session, data: "CreateUserRequest", actor: "Admin | User") -> Staff:
+    """Admin creates a staff member in the staff table."""
+    if data.role in ADMIN_ROLES and getattr(actor, "role", None) != "super_admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a super admin can assign admin-tier roles")
+    staff = Staff(
+        email=data.email,
+        full_name=data.full_name,
+        password_hash=hash_password(data.password),
+        role=data.role,
+        employee_id=data.employee_id,
+        department_id=data.department_id,
+        created_by=actor.id,
+    )
+    db.add(staff)
+    db.commit()
+    db.refresh(staff)
+    return staff
+
+
+def register_patient_v2(db: Session, data: "PatientRegisterRequest") -> Patient:
+    """Register a patient into the patients table (new flow)."""
+    existing = db.query(Patient).filter(Patient.email == data.email).first()
+    if not existing:
+        existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists.")
+
+    if not verify_otp(db, data.email, data.otp_code, "register"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification code. Please request a new one.")
+
+    from datetime import date as date_type
+    dob = None
+    if data.date_of_birth:
+        try:
+            dob = date_type.fromisoformat(data.date_of_birth)
+        except ValueError:
+            pass
+
+    patient = Patient(
+        email=data.email,
+        full_name=data.full_name,
+        password_hash=hash_password(data.password),
+        phone=data.phone,
+        date_of_birth=dob,
+        is_active=True,
+    )
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+    return patient
 
 
 def decode_token(token: str) -> dict:
@@ -160,6 +256,65 @@ def list_users(
     total = q.count()
     items = q.order_by(User.full_name).offset(skip).limit(limit).all()
     return items, total
+
+
+def list_users_combined(
+    db: Session,
+    role: Optional[str] = None,
+    department_id: Optional[uuid.UUID] = None,
+    is_active: Optional[bool] = None,
+    search: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> tuple[list, int]:
+    """List users from all 3 split tables (admin + staff + legacy users), excluding patients."""
+    results = []
+
+    def _apply_filters(q, model):
+        if role:
+            # Patient model has role as property, skip if role='patient' but model!=Patient
+            if model == Patient and role != "patient":
+                return q.filter(False)
+            if model != Patient:
+                q = q.filter(model.role == role)
+        if department_id and hasattr(model, "department_id"):
+            q = q.filter(model.department_id == department_id)
+        if is_active is not None:
+            q = q.filter(model.is_active == is_active)
+        if search:
+            like = f"%{search}%"
+            q = q.filter((model.full_name.ilike(like)) | (model.email.ilike(like)))
+        return q
+
+    # Staff table (non-admin, non-patient staff)
+    staff_q = _apply_filters(db.query(Staff), Staff)
+    # Legacy users table (for backward compat)
+    users_q = db.query(User).filter(User.role != "patient")
+    users_q = _apply_filters(users_q, User)
+
+    # Combine: prefer new table records; use set of IDs to avoid duplicates
+    seen_emails: set[str] = set()
+
+    for s in staff_q.order_by(Staff.full_name).all():
+        seen_emails.add(s.email)
+        results.append(s)
+
+    # Add legacy users not already in staff table
+    for u in users_q.order_by(User.full_name).all():
+        if u.email not in seen_emails:
+            results.append(u)
+            seen_emails.add(u.email)
+
+    # Admin table
+    admin_q = _apply_filters(db.query(Admin), Admin)
+    for a in admin_q.order_by(Admin.full_name).all():
+        if a.email not in seen_emails:
+            results.append(a)
+            seen_emails.add(a.email)
+
+    total = len(results)
+    results = sorted(results, key=lambda x: x.full_name)
+    return results[skip:skip + limit], total
 
 
 def get_user(db: Session, user_id: uuid.UUID) -> User:
