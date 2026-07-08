@@ -1,0 +1,31 @@
+{$AIHPS_DOMAIN} {
+	encode gzip zstd
+
+	handle_path /api/auth/* {
+		rewrite * /auth{uri}
+		reverse_proxy svc02_auth:8002
+	}
+
+	handle_path /api/svc03/* {
+		reverse_proxy svc03_procedures:8003
+	}
+
+	handle_path /api/analytics/* {
+		rewrite * /analytics{uri}
+		reverse_proxy svc05_analytics:8005
+	}
+
+	handle_path /api/audit/* {
+		rewrite * /audit{uri}
+		reverse_proxy svc06_audit:8006
+	}
+
+	handle_path /api/pipeline/* {
+		rewrite * /pipeline{uri}
+		reverse_proxy svc_agents:8020
+	}
+
+	handle {
+		reverse_proxy staffadmin:3002
+	}
+}

@@ -1,0 +1,170 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aihps_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-AIHPS}
+      POSTGRES_USER: ${POSTGRES_USER:-aihps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../backend/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aihps} -d ${POSTGRES_DB:-AIHPS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: aihps_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: aihps_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-aihps}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  svc02_auth:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc02_auth
+    command: uvicorn services.svc02_auth.main:app --host 0.0.0.0 --port 8002
+    env_file: ../backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc03_procedures:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc03_procedures
+    command: uvicorn services.svc03_procedures.main:app --host 0.0.0.0 --port 8003
+    env_file: ../backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc05_analytics:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc05_analytics
+    command: uvicorn services.svc05_analytics.main:app --host 0.0.0.0 --port 8005
+    env_file: ../backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc06_audit:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc06_audit
+    command: uvicorn services.svc06_audit.main:app --host 0.0.0.0 --port 8006
+    env_file: ../backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc_agents:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc_agents
+    command: uvicorn agents.main:app --host 0.0.0.0 --port 8020
+    env_file: ../backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  staffadmin:
+    build:
+      context: ../frontend-aihps/ai_hps-staffadmin pwa
+      dockerfile: Dockerfile
+    container_name: aihps_staffadmin
+    environment:
+      AUTH_API_URL: http://svc02_auth:8002
+      SVC03_API_URL: http://svc03_procedures:8003
+      ANALYTICS_API_URL: http://svc05_analytics:8005
+      AUDIT_API_URL: http://svc06_audit:8006
+      PIPELINE_API_URL: http://svc_agents:8020
+    depends_on:
+      - svc02_auth
+      - svc03_procedures
+      - svc05_analytics
+      - svc06_audit
+      - svc_agents
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: aihps_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      AIHPS_DOMAIN: ${AIHPS_DOMAIN:-http://206.189.27.60}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - staffadmin
+      - svc02_auth
+      - svc03_procedures
+      - svc05_analytics
+      - svc06_audit
+      - svc_agents
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  caddy_data:
+  caddy_config:
