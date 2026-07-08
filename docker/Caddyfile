@@ -16,7 +16,6 @@
 	}
 
 	handle_path /api/audit/* {
-		rewrite * /audit{uri}
 		reverse_proxy svc06_audit:8006
 	}
 

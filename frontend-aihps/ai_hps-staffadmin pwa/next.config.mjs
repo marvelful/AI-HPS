@@ -32,7 +32,7 @@ const nextConfig = {
       { source: '/api/svc03/:path*', destination: `${svc03Url}/:path*` },
       { source: '/api/auth/:path*', destination: `${authUrl}/auth/:path*` },
       { source: '/api/analytics/:path*', destination: `${analyticsUrl}/analytics/:path*` },
-      { source: '/api/audit/:path*', destination: `${auditUrl}/audit/:path*` },
+      { source: '/api/audit/:path*', destination: `${auditUrl}/:path*` },
     ];
   },
 };
