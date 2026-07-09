@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Search, X, Eye, EyeOff, CheckCircle, Copy, Check, UserX, UserCheck } from 'lucide-react';
+import { UserPlus, Search, X, Eye, EyeOff, CheckCircle, Copy, Check, UserX, UserCheck, Edit3 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { toast } from 'sonner';
 import { staffApi, type ApiUser, type CreateStaffPayload } from '@/lib/api';
@@ -9,9 +9,10 @@ import { staffApi, type ApiUser, type CreateStaffPayload } from '@/lib/api';
 interface StaffMember {
   id: string;
   name: string;
+  email: string;
   initials: string;
   avatarColor: string;
-  role: 'super_admin' | 'admin' | 'department_head' | 'doctor' | 'nurse' | 'pharmacist' | 'lab_technician';
+  role: 'super_admin' | 'admin' | 'department_admin' | 'department_head' | 'doctor' | 'nurse' | 'pharmacist' | 'lab_technician' | 'staff';
   roleLabel: string;
   department: string;
   employeeId: string;
@@ -72,6 +73,7 @@ function mapApiUser(u: ApiUser): StaffMember {
   return {
     id: u.id,
     name: u.full_name,
+    email: u.email,
     initials: getInitials(u.full_name),
     avatarColor: ROLE_COLORS[u.role] ?? '#6B7280',
     role: u.role as StaffMember['role'],
@@ -89,7 +91,9 @@ const DEPARTMENTS = ['All Departments', 'Surgery', 'Maternity', 'ICU', 'Infectio
 const STATUSES = ['All', 'Active', 'Inactive'];
 
 const ROLE_OPTIONS = [
+  { value: 'super_admin', label: 'Super Admin' },
   { value: 'admin', label: 'Admin' },
+  { value: 'department_admin', label: 'Department Admin' },
   { value: 'department_head', label: 'Department Head' },
   { value: 'doctor', label: 'Doctor' },
   { value: 'nurse', label: 'Nurse' },
@@ -266,12 +270,110 @@ function CreateStaffModal({ onClose, onCreated }: { onClose: () => void; onCreat
   );
 }
 
+function EditStaffModal({
+  member,
+  onClose,
+  onSaved,
+}: {
+  member: StaffMember;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: member.name,
+    email: member.email,
+    role: member.role,
+    employeeId: member.employeeId === '—' ? '' : member.employeeId,
+    phone: member.phone === '—' ? '' : member.phone,
+    isActive: member.status === 'active',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.role) {
+      toast.error('Name, email, and role are required.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await staffApi.update(member.id, {
+        full_name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        employee_id: form.employeeId.trim() || null,
+        phone: form.phone.trim() || null,
+        is_active: form.isActive,
+      });
+      toast.success('Staff details updated.');
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Failed to update staff details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backdropFilter: 'blur(4px)', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+      <div className="bg-white rounded-lg shadow-card-lg w-full max-w-md" style={{ borderRadius: '12px' }}>
+        <form onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 className="font-bold text-foreground" style={{ fontSize: '18px' }}>Edit Staff Member</h2>
+            <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="px-6 py-5 flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Full Name</label>
+              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 border border-border rounded-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ fontSize: '13px' }} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Email Address</label>
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="px-3 py-2 border border-border rounded-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ fontSize: '13px' }} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Role</label>
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as StaffMember['role'] })} className="px-3 py-2 border border-border rounded-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ fontSize: '13px' }}>
+                {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Employee ID</label>
+              <input type="text" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} className="px-3 py-2 border border-border rounded-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" style={{ fontSize: '13px' }} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Phone Number</label>
+              <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="px-3 py-2 border border-border rounded-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ fontSize: '13px' }} />
+            </div>
+            <label className="flex items-center gap-2 text-foreground" style={{ fontSize: '13px' }}>
+              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="h-4 w-4" />
+              Active account
+            </label>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-sm border border-border text-foreground hover:bg-muted transition-colors font-medium" style={{ fontSize: '13px' }}>Cancel</button>
+            <button type="submit" disabled={loading} className="px-5 py-2 rounded-sm bg-primary text-white font-semibold hover:bg-primary-hover transition-colors disabled:opacity-60 flex items-center gap-2" style={{ fontSize: '13px' }}>
+              {loading && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function StaffContent() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
+  const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -311,6 +413,13 @@ export default function StaffContent() {
         <CreateStaffModal
           onClose={() => setShowModal(false)}
           onCreated={() => queryClient.invalidateQueries({ queryKey: ['staff'] })}
+        />
+      )}
+      {editingMember && (
+        <EditStaffModal
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['staff'] })}
         />
       )}
 
@@ -407,15 +516,20 @@ export default function StaffContent() {
                       <Badge variant={member.status}>{member.status === 'active' ? 'Active' : 'Inactive'}</Badge>
                     </td>
                     <td className="px-4 py-2">
-                      {member.status === 'active' ? (
-                        <button onClick={() => toggleStatus(member.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-clinical-amber/50 text-clinical-amber hover:bg-clinical-amber-bg transition-colors font-medium" style={{ fontSize: '12px' }}>
-                          <UserX size={12} /> Deactivate
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setEditingMember(member)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium" style={{ fontSize: '12px' }}>
+                          <Edit3 size={12} /> Edit
                         </button>
-                      ) : (
-                        <button onClick={() => toggleStatus(member.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-clinical-green/50 text-clinical-green hover:bg-clinical-green-bg transition-colors font-medium" style={{ fontSize: '12px' }}>
-                          <UserCheck size={12} /> Activate
-                        </button>
-                      )}
+                        {member.status === 'active' ? (
+                          <button onClick={() => toggleStatus(member.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-clinical-amber/50 text-clinical-amber hover:bg-clinical-amber-bg transition-colors font-medium" style={{ fontSize: '12px' }}>
+                            <UserX size={12} /> Deactivate
+                          </button>
+                        ) : (
+                          <button onClick={() => toggleStatus(member.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-clinical-green/50 text-clinical-green hover:bg-clinical-green-bg transition-colors font-medium" style={{ fontSize: '12px' }}>
+                            <UserCheck size={12} /> Activate
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

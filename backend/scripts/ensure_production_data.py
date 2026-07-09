@@ -33,6 +33,7 @@ ADMIN_PASSWORD = os.getenv("AIHPS_SEED_ADMIN_PASSWORD", "AihpsAdmin#2026!")
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = BACKEND_ROOT.parent
 KNOWLEDGE_JSONL = BACKEND_ROOT / "knowledge" / "knowledge_chunks.jsonl"
+GDRIVE_MAP = BACKEND_ROOT / "scripts" / "gdrive_procedures_map.json"
 PROCEDURES_DIR = PROJECT_ROOT / "PROCEDURES"
 PUBLIC_DOCS_BASE = os.getenv("AIHPS_PUBLIC_DOCS_BASE", "https://aihps.tech/procedure-docs")
 
@@ -132,6 +133,17 @@ def _document_url(first_chunk: dict, pdf_urls: dict[str, str]) -> str | None:
     if not folder:
         return None
     return f"{PUBLIC_DOCS_BASE}/{quote(f'{folder}/{source_name}')}"
+
+
+def _google_drive_preview_url(url: str) -> str:
+    if "drive.google.com" not in url:
+        return url
+    parts = url.split("/d/", 1)
+    if len(parts) == 2:
+        file_id = parts[1].split("/", 1)[0]
+        if file_id:
+            return f"https://drive.google.com/file/d/{file_id}/preview"
+    return url
 
 
 def _load_chunks() -> list[dict]:
@@ -251,6 +263,48 @@ def _seed_procedures(db, docs: dict[str, list[dict]], sources: dict[str, Knowled
     return count
 
 
+def _seed_gdrive_procedures(db, admin: User, dept_by_name: dict[str, Department]) -> int:
+    if not GDRIVE_MAP.exists():
+        return 0
+    entries = json.loads(GDRIVE_MAP.read_text(encoding="utf-8"))
+    count = 0
+    for item in entries:
+        title = str(item.get("title") or "").strip()
+        document_url = _google_drive_preview_url(str(item.get("document_url") or "").strip())
+        if not title or not document_url:
+            continue
+
+        dept = dept_by_name.get(str(item.get("department_name") or "").lower())
+        existing = db.query(ProcedureEntry).filter(ProcedureEntry.title == title).first()
+        if existing is None:
+            existing = ProcedureEntry(
+                title=title,
+                content=item.get("summary") or title,
+                created_by=admin.id,
+                version=1,
+            )
+            db.add(existing)
+
+        existing.summary = item.get("summary")
+        existing.content = item.get("summary") or title
+        existing.steps = []
+        existing.compliance_annotations = []
+        existing.knowledge_domain = item.get("knowledge_domain") or "clinical_procedure"
+        existing.stream_target = "B"
+        existing.applicable_roles = ["doctor", "nurse", "staff"]
+        existing.risk_level = item.get("risk_level") or "medium"
+        existing.status = "published"
+        existing.department_id = dept.id if dept else None
+        existing.category_id = None
+        existing.language = item.get("language") or "EN"
+        existing.document_url = document_url
+        existing.updated_by = admin.id
+        existing.published_at = datetime.now(timezone.utc)
+        count += 1
+    db.commit()
+    return count
+
+
 def main() -> None:
     db = SessionLocal()
     try:
@@ -263,7 +317,8 @@ def main() -> None:
             docs[chunk["document_id"]].append(chunk)
         sources = _seed_knowledge(db, chunks, dept_by_name)
         procedure_count = _seed_procedures(db, docs, sources, admin, dept_by_name)
-        print(f"knowledge_chunks={len(chunks)} knowledge_sources={len(sources)} procedures={procedure_count}")
+        gdrive_count = _seed_gdrive_procedures(db, admin, dept_by_name)
+        print(f"knowledge_chunks={len(chunks)} knowledge_sources={len(sources)} procedures={procedure_count} gdrive_procedures={gdrive_count}")
     finally:
         db.close()
 

@@ -64,6 +64,15 @@ export interface CreateStaffPayload {
   phone?: string
 }
 
+export interface UpdateStaffPayload {
+  full_name?: string
+  email?: string
+  role?: string
+  employee_id?: string | null
+  phone?: string | null
+  is_active?: boolean
+}
+
 export interface Department {
   id: string
   name: string
@@ -237,6 +246,8 @@ export const staffApi = {
     authAxios.get<ApiUserList>('/users', { params }).then((r) => r.data),
   create: (data: CreateStaffPayload) =>
     authAxios.post<ApiUser>('/users', data).then((r) => r.data),
+  update: (userId: string, data: UpdateStaffPayload) =>
+    authAxios.patch<ApiUser>(`/users/${userId}`, data).then((r) => r.data),
   setActive: (userId: string, active: boolean) =>
     authAxios.patch<ApiUser>(`/users/${userId}`, { is_active: active }).then((r) => r.data),
 }

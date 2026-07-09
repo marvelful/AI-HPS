@@ -65,6 +65,17 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MAP_FILE = os.path.join(SCRIPT_DIR, "gdrive_procedures_map.json")
 
 
+def google_drive_preview_url(url: str) -> str:
+    if "drive.google.com" not in url:
+        return url
+    parts = url.split("/d/", 1)
+    if len(parts) == 2:
+        file_id = parts[1].split("/", 1)[0]
+        if file_id:
+            return f"https://drive.google.com/file/d/{file_id}/preview"
+    return url
+
+
 def main():
     db_url = os.environ.get(
         "DATABASE_URL",
@@ -112,7 +123,7 @@ def main():
                 skipped += 1
                 continue
 
-            document_url = item.get("document_url", "").strip()
+            document_url = google_drive_preview_url(item.get("document_url", "").strip())
 
             if not document_url:
                 print(f"  SKIP (no document URL): {title}")

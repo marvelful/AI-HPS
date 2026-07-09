@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Send, AlertTriangle, Phone, PanelLeft, Plus, Mic, MicOff, Clock } from 'lucide-react';
+import { Sparkles, Send, AlertTriangle, Phone, PanelLeft, Plus, Mic, MicOff, Clock, MoreVertical, Trash2 } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import { pipelineApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -27,21 +27,25 @@ interface ChatSession {
 
 const SESSIONS_KEY = 'aihps_staff_chat_sessions';
 
-function loadSessions(): ChatSession[] {
+function sessionStorageKey(ownerId?: string): string {
+  return `${SESSIONS_KEY}:${ownerId || 'guest'}`;
+}
+
+function loadSessions(key: string): ChatSession[] {
   try {
-    const raw = localStorage.getItem(SESSIONS_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function saveSessions(all: ChatSession[], id: string, msgs: ChatMessage[]) {
+function saveSessions(key: string, all: ChatSession[], id: string, msgs: ChatMessage[]) {
   const title = msgs.find((m) => m.role === 'user')?.content?.slice(0, 48) ?? 'Chat';
   const updated = all.filter((s) => s.id !== id);
   const session: ChatSession = { id, title, messages: msgs, createdAt: Date.now() };
   const next = [session, ...updated].slice(0, 30);
-  try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(next)); } catch {}
+  try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
   return next;
 }
 
@@ -164,15 +168,17 @@ function TypingIndicator() {
 }
 
 function Sidebar({
-  open, sessions, activeId, onSelect, onNewChat, onClose,
+  open, sessions, activeId, onSelect, onDelete, onNewChat, onClose,
 }: {
   open: boolean;
   sessions: ChatSession[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
   onNewChat: () => void;
   onClose: () => void;
 }) {
+  const [menuId, setMenuId] = useState<string | null>(null);
   if (!open) return null;
   return (
     <div className="flex-shrink-0 bg-card border-r border-border flex flex-col overflow-hidden" style={{ width: '260px' }}>
@@ -194,16 +200,33 @@ function Sidebar({
           <p className="px-4 py-8 text-center text-muted-foreground" style={{ fontSize: '12px' }}>No chat history yet.</p>
         ) : (
           sessions.map((s) => (
-            <button
+            <div
               key={s.id}
-              onClick={() => onSelect(s.id)}
-              className={`w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors flex flex-col gap-0.5 ${activeId === s.id ? 'bg-primary-light border-r-2 border-primary' : ''}`}
+              className={`relative w-full px-4 py-3 hover:bg-muted/60 transition-colors flex items-start gap-2 ${activeId === s.id ? 'bg-primary-light border-r-2 border-primary' : ''}`}
             >
-              <span className="truncate font-medium text-foreground" style={{ fontSize: '12px' }}>{s.title}</span>
-              <span className="text-muted-foreground flex items-center gap-1" style={{ fontSize: '10px' }}>
-                <Clock size={9} /> {new Date(s.createdAt).toLocaleDateString()}
-              </span>
-            </button>
+              <button onClick={() => onSelect(s.id)} className="min-w-0 flex-1 text-left flex flex-col gap-0.5">
+                <span className="truncate font-medium text-foreground" style={{ fontSize: '12px' }}>{s.title}</span>
+                <span className="text-muted-foreground flex items-center gap-1" style={{ fontSize: '10px' }}>
+                  <Clock size={9} /> {new Date(s.createdAt).toLocaleDateString()}
+                </span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMenuId(menuId === s.id ? null : s.id); }}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background"
+                aria-label="Chat options"
+              >
+                <MoreVertical size={14} />
+              </button>
+              {menuId === s.id && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(s.id); setMenuId(null); }}
+                  className="absolute right-3 top-9 z-10 flex items-center gap-2 px-3 py-2 rounded-sm border border-border bg-card shadow-card text-clinical-red hover:bg-clinical-red-bg"
+                  style={{ fontSize: '12px' }}
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>
@@ -212,8 +235,10 @@ function Sidebar({
 }
 
 export default function AIAssistantChat() {
+  const { user } = useAuthStore();
+  const storageKey = sessionStorageKey(user?.id || user?.email);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions());
+  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions(storageKey));
   const [activeSessionId, setActiveSessionId] = useState<string>(() => 'sess_' + Date.now());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -223,7 +248,12 @@ export default function AIAssistantChat() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recRef = useRef<any>(null);
-  const { user } = useAuthStore();
+
+  useEffect(() => {
+    setSessions(loadSessions(storageKey));
+    setActiveSessionId('sess_' + Date.now());
+    setMessages([]);
+  }, [storageKey]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -231,9 +261,9 @@ export default function AIAssistantChat() {
 
   useEffect(() => {
     if (messages.length > 0) {
-      setSessions((prev) => saveSessions(prev, activeSessionId, messages));
+      setSessions((prev) => saveSessions(storageKey, prev, activeSessionId, messages));
     }
-  }, [messages, activeSessionId]);
+  }, [messages, activeSessionId, storageKey]);
 
   const startNewSession = useCallback(() => {
     const id = 'sess_' + Date.now();
@@ -252,6 +282,17 @@ export default function AIAssistantChat() {
       setSidebarOpen(false);
     }
   }, [sessions]);
+
+  const deleteSession = useCallback((id: string) => {
+    setSessions((prev) => {
+      const next = prev.filter((session) => session.id !== id);
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    if (activeSessionId === id) {
+      startNewSession();
+    }
+  }, [activeSessionId, startNewSession, storageKey]);
 
   const requestBrowserMic = async () => {
     if (!navigator?.mediaDevices?.getUserMedia) return;
@@ -324,7 +365,7 @@ export default function AIAssistantChat() {
         stream: 'B',
         user_id: user?.id,
         user_role: user?.role,
-        session_id: activeSessionId,
+        session_id: `${user?.id || user?.email || 'staff'}:${activeSessionId}`,
         chatbot_mode: true,
       });
 
@@ -415,6 +456,7 @@ export default function AIAssistantChat() {
         sessions={sessions}
         activeId={activeSessionId}
         onSelect={loadSession}
+        onDelete={deleteSession}
         onNewChat={startNewSession}
         onClose={() => setSidebarOpen(false)}
       />

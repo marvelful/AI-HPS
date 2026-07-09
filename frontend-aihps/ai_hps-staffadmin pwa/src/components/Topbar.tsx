@@ -1,19 +1,15 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { Bell, Menu, X } from 'lucide-react';
+import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
+import { useAuthStore } from '@/stores/auth.store';
 
 
 interface TopbarProps {
   onMenuClick: () => void;
   sidebarOpen: boolean;
 }
-
-const currentUser = {
-  name: 'Dr. Kamto Serge',
-  role: 'Administrator',
-  initials: 'KS',
-};
 
 function getInitialColor(name: string): string {
   const colors = ['#004A8F', '#5B21B6', '#2E7D32', '#E8620A', '#0891B2', '#C62828'];
@@ -22,9 +18,25 @@ function getInitialColor(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U';
+}
+
+function roleLabel(role?: string): string {
+  if (!role) return 'Staff';
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function Topbar({ onMenuClick, sidebarOpen }: TopbarProps) {
-  const [showNotifications, setShowNotifications] = useState(false);
-  const avatarColor = getInitialColor(currentUser.name);
+  const { user } = useAuthStore();
+  const displayName = user?.full_name ?? 'Staff';
+  const avatarColor = getInitialColor(displayName);
+  const initials = getInitials(displayName);
 
   return (
     <header
@@ -58,8 +70,8 @@ export default function Topbar({ onMenuClick, sidebarOpen }: TopbarProps) {
       <div className="flex items-center gap-3">
         {/* Bell */}
         <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
+          <Link
+            href="/notifications"
             className="relative text-white/80 hover:text-white p-1.5 rounded transition-colors"
             aria-label="Notifications"
           >
@@ -68,7 +80,7 @@ export default function Topbar({ onMenuClick, sidebarOpen }: TopbarProps) {
               style={{ backgroundColor: '#E8620A', fontSize: '9px' }}>
               3
             </span>
-          </button>
+          </Link>
         </div>
 
         {/* Divider */}
@@ -80,11 +92,11 @@ export default function Topbar({ onMenuClick, sidebarOpen }: TopbarProps) {
             className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
             style={{ backgroundColor: avatarColor, fontSize: '12px' }}
           >
-            {currentUser.initials}
+            {initials}
           </div>
           <div className="hidden sm:flex flex-col leading-tight">
-            <span className="text-white font-semibold" style={{ fontSize: '13px' }}>{currentUser.name}</span>
-            <span className="text-white/60" style={{ fontSize: '10px' }}>{currentUser.role}</span>
+            <span className="text-white font-semibold" style={{ fontSize: '13px' }}>{displayName}</span>
+            <span className="text-white/60" style={{ fontSize: '10px' }}>{roleLabel(user?.role)}</span>
           </div>
         </div>
       </div>

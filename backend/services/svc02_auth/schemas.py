@@ -47,6 +47,7 @@ class CreateUserRequest(BaseModel):
     role: str = "staff"
     employee_id: str | None = None
     department_id: uuid.UUID | None = None
+    phone: str | None = None
 
     @field_validator("role")
     @classmethod
@@ -118,10 +119,12 @@ class UserListResponse(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
+    email: EmailStr | None = None
     full_name: str | None = None
     role: str | None = None
     employee_id: str | None = None
     department_id: uuid.UUID | None = None
+    phone: str | None = None
     is_active: bool | None = None
 
     @field_validator("role")

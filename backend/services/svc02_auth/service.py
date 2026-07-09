@@ -111,6 +111,7 @@ def create_staff_member(db: Session, data: "CreateUserRequest", actor: "Admin | 
         role=data.role,
         employee_id=data.employee_id,
         department_id=data.department_id,
+        phone=getattr(data, "phone", None),
         created_by=actor.id,
     )
     db.add(staff)
@@ -227,6 +228,7 @@ def create_user(db: Session, data: CreateUserRequest, actor: User) -> User:
         role=data.role,
         employee_id=data.employee_id,
         department_id=data.department_id,
+        phone=data.phone,
     )
     db.add(user)
     db.commit()
@@ -318,7 +320,11 @@ def list_users_combined(
 
 
 def get_user(db: Session, user_id: uuid.UUID) -> User:
-    user = db.query(User).filter(User.id == user_id).first()
+    user = (
+        db.query(User).filter(User.id == user_id).first()
+        or db.query(Staff).filter(Staff.id == user_id).first()
+        or db.query(Admin).filter(Admin.id == user_id).first()
+    )
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     return user
@@ -330,7 +336,8 @@ def update_user(db: Session, user_id: uuid.UUID, data: UpdateUserRequest, actor:
     if "role" in updates:
         _require_no_escalation(actor, updates["role"])
     for field, value in updates.items():
-        setattr(user, field, value)
+        if hasattr(user, field):
+            setattr(user, field, value)
     db.commit()
     db.refresh(user)
     return user

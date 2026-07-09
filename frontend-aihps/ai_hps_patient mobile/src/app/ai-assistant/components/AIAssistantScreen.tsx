@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, ArrowLeft, Phone, Mic, MicOff, PanelLeft, Plus, Clock } from 'lucide-react';
+import { Send, Sparkles, ArrowLeft, Phone, Mic, MicOff, PanelLeft, Plus, Clock, MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { pipelineApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -25,21 +25,25 @@ interface ChatSession {
 
 const SESSIONS_KEY = 'aihps_patient_sessions';
 
-function loadSessions(): ChatSession[] {
+function sessionStorageKey(ownerId?: string): string {
+  return `${SESSIONS_KEY}:${ownerId || 'guest'}`;
+}
+
+function loadSessions(key: string): ChatSession[] {
   try {
-    const raw = localStorage.getItem(SESSIONS_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function saveSessions(all: ChatSession[], id: string, msgs: Message[]): ChatSession[] {
+function saveSessions(key: string, all: ChatSession[], id: string, msgs: Message[]): ChatSession[] {
   const title = msgs.find((m) => m.type === 'user')?.content?.slice(0, 48) ?? 'Chat';
   const updated = all.filter((s) => s.id !== id);
   const session: ChatSession = { id, title, messages: msgs, createdAt: Date.now() };
   const next = [session, ...updated].slice(0, 30);
-  try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(next)); } catch {}
+  try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
   return next;
 }
 
@@ -223,16 +227,18 @@ function TypingIndicator() {
 }
 
 function HistorySidebar({
-  open, sessions, activeId, onSelect, onNewChat, onClose, lang,
+  open, sessions, activeId, onSelect, onDelete, onNewChat, onClose, lang,
 }: {
   open: boolean;
   sessions: ChatSession[];
   activeId: string;
   onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
   onNewChat: () => void;
   onClose: () => void;
   lang: 'fr' | 'en';
 }) {
+  const [menuId, setMenuId] = useState<string | null>(null);
   if (!open) return null;
   const historyLabel = lang === 'en' ? 'Chat History' : 'Historique';
   const newChatLabel = lang === 'en' ? 'New Chat' : 'Nouveau Chat';
@@ -259,16 +265,33 @@ function HistorySidebar({
             <p className="px-4 py-8 text-center text-muted-foreground text-xs">{noHistoryLabel}</p>
           ) : (
             sessions.map((s) => (
-              <button
+              <div
                 key={s.id}
-                onClick={() => { onSelect(s.id); onClose(); }}
-                className={`w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors flex flex-col gap-0.5 ${activeId === s.id ? 'bg-primary-light border-r-2 border-primary' : ''}`}
+                className={`relative w-full px-4 py-3 hover:bg-muted/60 transition-colors flex items-start gap-2 ${activeId === s.id ? 'bg-primary-light border-r-2 border-primary' : ''}`}
               >
-                <span className="truncate font-medium text-foreground text-xs">{s.title}</span>
-                <span className="text-muted-foreground flex items-center gap-1" style={{ fontSize: '10px' }}>
-                  <Clock size={9} /> {new Date(s.createdAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'fr-FR')}
-                </span>
-              </button>
+                <button onClick={() => { onSelect(s.id); onClose(); }} className="min-w-0 flex-1 text-left flex flex-col gap-0.5">
+                  <span className="truncate font-medium text-foreground text-xs">{s.title}</span>
+                  <span className="text-muted-foreground flex items-center gap-1" style={{ fontSize: '10px' }}>
+                    <Clock size={9} /> {new Date(s.createdAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'fr-FR')}
+                  </span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuId(menuId === s.id ? null : s.id); }}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+                  aria-label={lang === 'en' ? 'Chat options' : 'Options du chat'}
+                >
+                  <MoreVertical size={14} />
+                </button>
+                {menuId === s.id && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(s.id); setMenuId(null); }}
+                    className="absolute right-3 top-9 z-10 flex items-center gap-2 px-3 py-2 rounded-lg border bg-white shadow-lg text-red-600"
+                    style={{ fontSize: '12px', borderColor: 'var(--border)' }}
+                  >
+                    <Trash2 size={13} /> {lang === 'en' ? 'Delete' : 'Supprimer'}
+                  </button>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -280,8 +303,9 @@ function HistorySidebar({
 export default function AIAssistantScreen() {
   const { patient } = useAuthStore();
   const lang: 'fr' | 'en' = patient?.language ?? 'fr';
+  const storageKey = sessionStorageKey(patient?.id || patient?.email);
 
-  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions());
+  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions(storageKey));
   const [activeSessionId, setActiveSessionId] = useState(() => 'sess_' + Date.now());
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -293,14 +317,20 @@ export default function AIAssistantScreen() {
   const recRef = useRef<any>(null);
 
   useEffect(() => {
+    setSessions(loadSessions(storageKey));
+    setActiveSessionId('sess_' + Date.now());
+    setMessages([]);
+  }, [storageKey]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
   useEffect(() => {
     if (messages.length > 0) {
-      setSessions((prev) => saveSessions(prev, activeSessionId, messages));
+      setSessions((prev) => saveSessions(storageKey, prev, activeSessionId, messages));
     }
-  }, [messages, activeSessionId]);
+  }, [messages, activeSessionId, storageKey]);
 
   const startNewSession = useCallback(() => {
     const id = 'sess_' + Date.now();
@@ -316,6 +346,17 @@ export default function AIAssistantScreen() {
       setMessages(s.messages);
     }
   }, [sessions]);
+
+  const deleteSession = useCallback((id: string) => {
+    setSessions((prev) => {
+      const next = prev.filter((session) => session.id !== id);
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    if (activeSessionId === id) {
+      startNewSession();
+    }
+  }, [activeSessionId, startNewSession, storageKey]);
 
   const requestBrowserMic = async () => {
     if (!navigator?.mediaDevices?.getUserMedia) return;
@@ -434,7 +475,7 @@ export default function AIAssistantScreen() {
         platform: 'mobile',
         stream: 'A',
         user_id: patient?.id,
-        session_id: activeSessionId,
+        session_id: `${patient?.id || patient?.email || 'patient'}:${activeSessionId}`,
         chatbot_mode: true,
       });
 
@@ -520,6 +561,7 @@ export default function AIAssistantScreen() {
         sessions={sessions}
         activeId={activeSessionId}
         onSelect={loadSession}
+        onDelete={deleteSession}
         onNewChat={startNewSession}
         onClose={() => setSidebarOpen(false)}
         lang={lang}
