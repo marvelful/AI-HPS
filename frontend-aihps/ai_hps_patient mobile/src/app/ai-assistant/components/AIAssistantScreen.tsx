@@ -317,17 +317,77 @@ export default function AIAssistantScreen() {
     }
   }, [sessions]);
 
-  const toggleMic = () => {
+  const requestBrowserMic = async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) return;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+  };
+
+  const toggleMic = async () => {
     if (isRecording) {
-      recRef.current?.stop();
+      if (recRef.current === 'capacitor') {
+        try {
+          const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+          await SpeechRecognition.stop();
+        } catch {}
+      } else {
+        recRef.current?.stop();
+      }
       setIsRecording(false);
       return;
+    }
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform()) {
+        const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+        const available = await SpeechRecognition.available();
+        if (!available.available) {
+          alert(lang === 'en'
+            ? 'Voice recognition is not available on this device.'
+            : 'La reconnaissance vocale n’est pas disponible sur cet appareil.');
+          return;
+        }
+
+        const permission = await SpeechRecognition.requestPermissions();
+        if (permission.speechRecognition !== 'granted') {
+          alert(lang === 'en'
+            ? 'Microphone permission is required for voice input.'
+            : 'L’autorisation du microphone est nécessaire pour la saisie vocale.');
+          return;
+        }
+
+        setIsRecording(true);
+        recRef.current = 'capacitor';
+        const result = await SpeechRecognition.start({
+          language: lang === 'en' ? 'en-US' : 'fr-FR',
+          maxResults: 1,
+          prompt: lang === 'en' ? 'Speak now' : 'Parlez maintenant',
+          partialResults: false,
+          popup: true,
+        });
+        const transcript = result.matches?.[0];
+        if (transcript) setInput((p) => (p ? p + ' ' + transcript : transcript));
+        setIsRecording(false);
+        recRef.current = null;
+        return;
+      }
+    } catch {
+      setIsRecording(false);
+      recRef.current = null;
     }
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       alert(lang === 'en'
         ? 'Voice recognition is not supported in this browser. Try Chrome.'
         : 'La reconnaissance vocale n\'est pas supportée dans ce navigateur. Essayez Chrome.');
+      return;
+    }
+    try {
+      await requestBrowserMic();
+    } catch {
+      alert(lang === 'en'
+        ? 'Microphone access was blocked. Please allow microphone permission and try again.'
+        : 'L’accès au microphone a été bloqué. Autorisez le microphone puis réessayez.');
       return;
     }
     const rec = new SR();
@@ -348,9 +408,16 @@ export default function AIAssistantScreen() {
       setIsRecording(false);
     };
     rec.onend = () => setIsRecording(false);
-    rec.start();
-    recRef.current = rec;
-    setIsRecording(true);
+    try {
+      rec.start();
+      recRef.current = rec;
+      setIsRecording(true);
+    } catch {
+      alert(lang === 'en'
+        ? 'Could not start voice recognition. Please try again.'
+        : 'Impossible de démarrer la reconnaissance vocale. Veuillez réessayer.');
+      setIsRecording(false);
+    }
   };
 
   const sendMessage = async (text: string) => {

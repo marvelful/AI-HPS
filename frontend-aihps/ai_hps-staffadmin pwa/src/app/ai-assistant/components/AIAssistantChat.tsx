@@ -253,7 +253,13 @@ export default function AIAssistantChat() {
     }
   }, [sessions]);
 
-  const toggleMic = () => {
+  const requestBrowserMic = async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) return;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+  };
+
+  const toggleMic = async () => {
     if (isRecording) {
       recRef.current?.stop();
       setIsRecording(false);
@@ -262,6 +268,12 @@ export default function AIAssistantChat() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       alert('Voice recognition is not supported in this browser. Try Chrome or Edge.');
+      return;
+    }
+    try {
+      await requestBrowserMic();
+    } catch {
+      alert('Microphone access was blocked. Please allow microphone permission for this site and try again.');
       return;
     }
     const rec = new SR();
@@ -280,9 +292,14 @@ export default function AIAssistantChat() {
       setIsRecording(false);
     };
     rec.onend = () => setIsRecording(false);
-    rec.start();
-    recRef.current = rec;
-    setIsRecording(true);
+    try {
+      rec.start();
+      recRef.current = rec;
+      setIsRecording(true);
+    } catch {
+      alert('Could not start voice recognition. Please try again.');
+      setIsRecording(false);
+    }
   };
 
   const handleSend = async () => {
