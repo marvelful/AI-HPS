@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from shared.database import get_db
+from shared.events import publish_audit
 from shared.models.auth import User
 from services.svc02_auth import schemas, service
 from services.svc02_auth.dependencies import (
@@ -18,6 +19,17 @@ from services.svc02_auth.dependencies import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _audit_auth_event(event_type: str, user_id: str | None, email: str, user_type: str | None = None) -> None:
+    publish_audit(
+        event_type,
+        user_id,
+        "auth",
+        user_id,
+        {"email": email},
+        {"user_type": user_type} if user_type else {},
+    )
 
 
 @router.post("/login", response_model=schemas.TokenResponse)
@@ -38,6 +50,7 @@ def login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
     user_type = getattr(user, "__tablename__", "users")
     expire_minutes = service.get_token_expire_minutes(role)
     token, _jti, _exp = service.create_access_token(user, expire_minutes, user_type=user_type)
+    _audit_auth_event("auth.login", str(user.id), str(user.email), user_type)
 
     return schemas.TokenResponse(
         access_token=token,
@@ -56,6 +69,7 @@ def patient_login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
 
     expire_minutes = service.get_token_expire_minutes("patient")
     token, _jti, _exp = service.create_access_token(patient, expire_minutes, user_type="patients")
+    _audit_auth_event("auth.patient_login", str(patient.id), str(patient.email), "patients")
 
     return schemas.TokenResponse(
         access_token=token,
@@ -74,6 +88,7 @@ def staff_login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
 
     expire_minutes = service.get_token_expire_minutes(staff.role)
     token, _jti, _exp = service.create_access_token(staff, expire_minutes, user_type="staff")
+    _audit_auth_event("auth.staff_login", str(staff.id), str(staff.email), "staff")
 
     return schemas.TokenResponse(
         access_token=token,
@@ -92,6 +107,7 @@ def admin_login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
 
     expire_minutes = service.get_token_expire_minutes(admin.role)
     token, _jti, _exp = service.create_access_token(admin, expire_minutes, user_type="admins")
+    _audit_auth_event("auth.admin_login", str(admin.id), str(admin.email), "admins")
 
     return schemas.TokenResponse(
         access_token=token,
@@ -105,6 +121,7 @@ def admin_login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
 def request_otp(body: schemas.RequestOtpRequest, db: Session = Depends(get_db)):
     """Send a 6-digit OTP to the given email. Used before patient self-registration."""
     service.request_otp(db, str(body.email), body.purpose, body.full_name or "")
+    _audit_auth_event("auth.otp_requested", None, str(body.email), "patients")
     return {"message": "Verification code sent. Please check your email."}
 
 
@@ -122,6 +139,7 @@ def register_patient(body: schemas.PatientRegisterRequest, db: Session = Depends
 
     expire_minutes = service.get_token_expire_minutes(user.role)
     token, _jti, _exp = service.create_access_token(user, expire_minutes, user_type="patients")
+    _audit_auth_event("auth.patient_registered", str(user.id), str(user.email), "patients")
 
     return schemas.TokenResponse(
         access_token=token,
@@ -144,6 +162,7 @@ def logout(
         if jti and user_id and exp_ts:
             expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
             service.logout_user(db, jti, user_id, expires_at)
+            _audit_auth_event("auth.logout", user_id, str(payload.get("email") or ""), payload.get("user_type"))
     except JWTError:
         pass
 
