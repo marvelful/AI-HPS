@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from agents.state import initial_state
 from agents.graph import get_pipeline
 from agents.shared.embeddings import load as load_embeddings
+from shared.events import publish_audit
 
 
 @asynccontextmanager
@@ -67,7 +68,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3002", "http://localhost:3004", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3002",
+        "http://localhost:3004",
+        "https://aihps.tech",
+        "https://www.aihps.tech",
+        "https://patient.aihps.tech",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -97,12 +105,28 @@ class QueryResponse(BaseModel):
 
 def _write_query_event(req: QueryRequest, result: dict, elapsed_ms: int) -> None:
     from shared.database import SessionLocal
+    from shared.models.auth import Admin, Patient, Staff, User
     from shared.models.analytics import QueryEvent
     db = SessionLocal()
     try:
+        user_id = None
+        if req.user_id:
+            try:
+                candidate = uuid.UUID(req.user_id)
+                exists = (
+                    db.query(User.id).filter(User.id == candidate).first()
+                    or db.query(Admin.id).filter(Admin.id == candidate).first()
+                    or db.query(Staff.id).filter(Staff.id == candidate).first()
+                    or db.query(Patient.id).filter(Patient.id == candidate).first()
+                )
+                if exists:
+                    user_id = candidate
+            except ValueError:
+                user_id = None
+
         evt = QueryEvent(
             session_id=req.session_id,
-            user_id=uuid.UUID(req.user_id) if req.user_id else None,
+            user_id=user_id,
             query=req.raw_query[:2000],
             intent=result.get("intent"),
             agent=result.get("intent") or "unknown",
@@ -113,6 +137,24 @@ def _write_query_event(req: QueryRequest, result: dict, elapsed_ms: int) -> None
         )
         db.add(evt)
         db.commit()
+
+        publish_audit(
+            "ai.query",
+            str(user_id) if user_id else None,
+            "ai_query",
+            str(evt.id),
+            {
+                "query": req.raw_query[:500],
+                "intent": result.get("intent"),
+                "had_result": result.get("had_result", False),
+            },
+            {
+                "platform": req.platform,
+                "stream": req.stream,
+                "session_id": req.session_id,
+                "response_time_ms": elapsed_ms,
+            },
+        )
     except Exception as exc:
         print(f"[pipeline] Analytics log failed (non-fatal): {exc}")
     finally:

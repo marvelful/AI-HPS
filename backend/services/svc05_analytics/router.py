@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.models.auth import User
-from services.svc02_auth.dependencies import get_current_user, require_admin
+from services.svc02_auth.dependencies import require_staff_or_admin
 from services.svc05_analytics import schemas, service
 
 router = APIRouter(tags=["analytics"])
@@ -18,9 +18,9 @@ def list_queries(
     had_result: Optional[bool] = None,
     intent: Optional[str] = None,
     skip: int = 0,
-    limit: int = Query(50, le=200),
+    limit: int = Query(50, le=1000),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_staff_or_admin),
 ):
     items, total = service.list_query_events(db, platform, stream, had_result, intent, skip, limit)
     return schemas.QueryEventListResponse(
@@ -41,7 +41,7 @@ def list_gaps(
     skip: int = 0,
     limit: int = Query(50, le=200),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_staff_or_admin),
 ):
     items, total = service.list_content_gaps(db, min_occurrences, skip, limit)
     return schemas.ContentGapListResponse(
@@ -57,6 +57,6 @@ def list_gaps(
 @router.get("/summary", response_model=schemas.AnalyticsSummary)
 def get_summary(
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_staff_or_admin),
 ):
     return service.get_summary(db)

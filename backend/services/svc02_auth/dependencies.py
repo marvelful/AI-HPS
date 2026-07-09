@@ -69,6 +69,12 @@ def require_admin(current_user: AnyUser = Depends(get_current_user)) -> AnyUser:
     return current_user
 
 
+def require_staff_or_admin(current_user: AnyUser = Depends(get_current_user)) -> AnyUser:
+    if current_user.role == "patient":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff access required")
+    return current_user
+
+
 def require_super_admin(current_user: AnyUser = Depends(get_current_user)) -> AnyUser:
     if current_user.role != "super_admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required")

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.models.auth import User
-from services.svc02_auth.dependencies import get_current_user, require_admin
+from services.svc02_auth.dependencies import require_admin, require_staff_or_admin
 from services.svc06_audit import schemas, service
 
 router = APIRouter(tags=["audit"])
@@ -31,7 +31,7 @@ def list_events(
     skip: int = 0,
     limit: int = Query(50, le=500),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_staff_or_admin),
 ):
     items, total = service.list_events(db, event_type, entity_type, skip, limit)
     return {
@@ -46,7 +46,7 @@ def list_events(
 def get_event(
     record_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_staff_or_admin),
 ):
     from fastapi import HTTPException
     from shared.models.audit import AuditLog
@@ -60,7 +60,7 @@ def get_event(
 def verify_event(
     record_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_staff_or_admin),
 ):
     valid, msg = service.verify_record(db, record_id)
     return schemas.VerifyResponse(id=record_id, valid=valid, message=msg)
