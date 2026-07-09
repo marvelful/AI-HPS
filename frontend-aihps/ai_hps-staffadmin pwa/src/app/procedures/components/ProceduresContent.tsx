@@ -1,12 +1,13 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, ChevronUp, ChevronDown, MoreHorizontal, ClipboardList, X, FileText } from 'lucide-react';
+import { Search, Plus, ChevronUp, ChevronDown, MoreHorizontal, ClipboardList, X, FileText, Upload } from 'lucide-react';
 import Badge from '@/components/ui/Badge';
 import RiskDot from '@/components/ui/RiskDot';
 import EmptyState from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
-import { proceduresApi, type Procedure, type Department } from '@/lib/api';
+import { proceduresApi, staffApi, type Procedure, type Department, type ApiUser } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth.store';
 
 type SortDir = 'asc' | 'desc' | null;
 
@@ -69,10 +70,12 @@ const ITEMS_PER_PAGE = 10;
 
 function CreateProcedureModal({
   departments,
+  approvers,
   onClose,
   onCreated,
 }: {
   departments: Department[];
+  approvers: ApiUser[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -85,14 +88,36 @@ function CreateProcedureModal({
     stream_target: 'both',
     risk_level: 'low',
     language: 'EN',
+    document_url: '',
   });
+  const [approverIds, setApproverIds] = useState<string[]>([]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleApprover = (id: string) => {
+    setApproverIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  };
+
+  const handleImportDocument = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.type === 'application/pdf') {
+      set('title', form.title || file.name.replace(/\.pdf$/i, ''));
+      toast.info('PDF selected. Paste the Google Drive or hosted PDF link below, then paste the procedure text if needed.');
+      return;
+    }
+    const text = await file.text();
+    set('content', text);
+    set('title', form.title || file.name.replace(/\.[^.]+$/, ''));
+    toast.success('Document content imported.');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.content.trim()) {
       toast.error('Title and content are required.');
+      return;
+    }
+    if (approverIds.length === 0) {
+      toast.error('Select at least one department head or admin approver.');
       return;
     }
     setLoading(true);
@@ -105,12 +130,14 @@ function CreateProcedureModal({
         stream_target: form.stream_target,
         risk_level: form.risk_level,
         language: form.language,
+        document_url: form.document_url.trim() || undefined,
         steps: [],
         compliance_annotations: [],
         knowledge_domain: 'clinical_procedure',
         applicable_roles: [],
+        approver_ids: approverIds,
       });
-      toast.success('Procedure created as draft.');
+      toast.success('Procedure submitted to selected approvers.');
       onCreated();
       onClose();
     } catch (err: any) {
@@ -146,6 +173,26 @@ function CreateProcedureModal({
             <div className="flex flex-col gap-1.5">
               <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Content / Description <span className="text-clinical-red">*</span></label>
               <textarea value={form.content} onChange={(e) => set('content', e.target.value)} placeholder="Full procedure content…" rows={5} className="px-3 py-2 border border-border rounded-sm bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" style={{ fontSize: '13px' }} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+              <div className="flex flex-col gap-1.5">
+                <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Hosted document link</label>
+                <input type="url" value={form.document_url} onChange={(e) => set('document_url', e.target.value)} placeholder="PDF or Google Drive link" className="px-3 py-2 border border-border rounded-sm bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ fontSize: '13px' }} />
+              </div>
+              <label className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-sm border border-border bg-card text-foreground hover:bg-muted cursor-pointer transition-colors" style={{ fontSize: '13px' }}>
+                <Upload size={14} />
+                Import
+                <input
+                  type="file"
+                  accept=".txt,.md,.csv,.json,.pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={(e) => {
+                    void handleImportDocument(e.target.files?.[0]);
+                    e.currentTarget.value = '';
+                  }}
+                />
+              </label>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -185,14 +232,38 @@ function CreateProcedureModal({
               </div>
             </div>
 
-            <p className="text-muted-foreground" style={{ fontSize: '12px' }}>Procedure will be saved as <strong>Draft</strong>. Submit for approval from the procedures table.</p>
+            <div className="flex flex-col gap-2">
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Requested approvers <span className="text-clinical-red">*</span></label>
+              <div className="border border-border rounded-sm bg-card max-h-40 overflow-y-auto">
+                {approvers.length === 0 ? (
+                  <p className="px-3 py-2 text-muted-foreground" style={{ fontSize: '13px' }}>No department heads or admins are available.</p>
+                ) : (
+                  approvers.map((person) => (
+                    <label key={person.id} className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 cursor-pointer hover:bg-muted/60">
+                      <input
+                        type="checkbox"
+                        checked={approverIds.includes(person.id)}
+                        onChange={() => toggleApprover(person.id)}
+                        className="h-4 w-4"
+                      />
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-medium text-foreground truncate" style={{ fontSize: '13px' }}>{person.full_name}</span>
+                        <span className="block text-muted-foreground truncate" style={{ fontSize: '12px' }}>{person.role}</span>
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <p className="text-muted-foreground" style={{ fontSize: '12px' }}>Procedure will appear in Approvals while the selected reviewers make their decision.</p>
           </div>
 
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-sm border border-border text-foreground hover:bg-muted transition-colors font-medium" style={{ fontSize: '13px' }}>Cancel</button>
             <button type="submit" disabled={loading} className="px-5 py-2 rounded-sm bg-primary text-white font-semibold hover:bg-primary-hover transition-colors disabled:opacity-60 flex items-center gap-2" style={{ fontSize: '13px' }}>
               {loading && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              {loading ? 'Creating…' : 'Create Draft'}
+              {loading ? 'Submitting...' : 'Submit for Approval'}
             </button>
           </div>
         </form>
@@ -211,11 +282,20 @@ export default function ProceduresContent() {
   const [showNewModal, setShowNewModal] = useState(false);
 
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const canCreateProcedure = ['super_admin', 'admin', 'department_admin', 'department_head'].includes(user?.role ?? '');
 
   // Fetch departments for filter dropdown
   const { data: departmentsData } = useQuery<Department[]>({
     queryKey: ['departments'],
     queryFn: () => proceduresApi.listDepartments(true),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: staffData } = useQuery({
+    queryKey: ['procedure-approvers'],
+    queryFn: () => staffApi.list({ limit: 500 }),
+    enabled: canCreateProcedure,
     staleTime: 5 * 60_000,
   });
 
@@ -254,6 +334,11 @@ export default function ProceduresContent() {
     allProcedures.forEach((p) => { if (p.department && p.department !== '—') names.add(p.department); });
     return ['All Departments', ...Array.from(names).sort()];
   }, [allProcedures]);
+
+  const approvers = useMemo(() => {
+    const allowedRoles = new Set(['super_admin', 'admin', 'department_admin', 'department_head']);
+    return (staffData?.items ?? []).filter((person: ApiUser) => allowedRoles.has(person.role) && person.is_active);
+  }, [staffData]);
 
   const statuses = ['All Status', 'Draft', 'Pending', 'Published', 'Archived'];
 
@@ -307,6 +392,7 @@ export default function ProceduresContent() {
       {showNewModal && (
         <CreateProcedureModal
           departments={departmentsData ?? []}
+          approvers={approvers}
           onClose={() => setShowNewModal(false)}
           onCreated={() => queryClient.invalidateQueries({ queryKey: ['procedures'] })}
         />
@@ -318,16 +404,18 @@ export default function ProceduresContent() {
           <h1 className="font-bold text-foreground" style={{ fontSize: '26px' }}>Procedures</h1>
           <p className="text-muted-foreground mt-0.5" style={{ fontSize: '14px' }}>Knowledge base management</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-sm bg-primary text-white hover:bg-primary-hover transition-all duration-150 active:scale-95"
-            style={{ fontSize: '13px' }}
-          >
-            <Plus size={14} />
-            New Procedure
-          </button>
-        </div>
+        {canCreateProcedure && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowNewModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-sm bg-primary text-white hover:bg-primary-hover transition-all duration-150 active:scale-95"
+              style={{ fontSize: '13px' }}
+            >
+              <Plus size={14} />
+              New Procedure
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filter Bar */}

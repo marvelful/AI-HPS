@@ -55,10 +55,37 @@ _SYSTEM_B = (
 
 # ── Search ────────────────────────────────────────────────────────────────────
 
-def _semantic_search(query: str, language: Optional[str], top_k: int) -> list[tuple[float, dict]]:
+_PATIENT_ALLOWED_DOCUMENTS = {
+    "infection_control_who_guidelines_on_hand_hygiene_in_health_care",
+}
+
+
+def _is_patient_allowed(meta: dict) -> bool:
+    document_id = str(meta.get("document_id") or "").lower()
+    source = str(meta.get("source") or "").lower()
+    citation = str(meta.get("citation") or "").lower()
+    return (
+        document_id in _PATIENT_ALLOWED_DOCUMENTS
+        or "who guidelines on hand hygiene in health care" in source
+        or "who guidelines on hand hygiene in health care" in citation
+    )
+
+
+def _filter_for_stream(items: list, stream: str) -> list:
+    if stream != "A":
+        return items
+    filtered = []
+    for item in items:
+        meta = item[1] if isinstance(item, tuple) else item
+        if _is_patient_allowed(meta):
+            filtered.append(item)
+    return filtered
+
+
+def _semantic_search(query: str, language: Optional[str], top_k: int, stream: str) -> list[tuple[float, dict]]:
     try:
         from services.svc07_kb_sync.service import search
-        return search(query, top_k=top_k, language=language)
+        return _filter_for_stream(search(query, top_k=top_k, language=language), stream)
     except Exception as exc:
         print(f"[agent_p] Semantic search error: {exc}")
         return []
@@ -78,7 +105,7 @@ def _translate_to_en(text: str) -> str:
         return text
 
 
-def _fts_search(query: str, language: Optional[str], top_k: int) -> list[dict]:
+def _fts_search(query: str, language: Optional[str], top_k: int, stream: str) -> list[dict]:
     from sqlalchemy import text as sql_text
     from shared.database import SessionLocal
 
@@ -87,7 +114,7 @@ def _fts_search(query: str, language: Optional[str], top_k: int) -> list[dict]:
     safe_q = re.sub(r"[^\w\s]", " ", search_query).strip() or "hospital procedure"
 
     sql = """
-        SELECT chunk_id, title, content, section, knowledge_domain,
+        SELECT chunk_id, document_id, source, title, content, section, knowledge_domain,
                department, language, citation, page,
                ts_rank(search_vector, plainto_tsquery(:q)) AS rank
         FROM aihps_procedures.knowledge_chunks
@@ -102,6 +129,8 @@ def _fts_search(query: str, language: Optional[str], top_k: int) -> list[dict]:
         return [
             {
                 "chunk_id":        r.chunk_id,
+                "document_id":     r.document_id,
+                "source":          r.source,
                 "title":           r.title,
                 "content":         r.content[:1000],
                 "section":         r.section,
@@ -113,6 +142,7 @@ def _fts_search(query: str, language: Optional[str], top_k: int) -> list[dict]:
                 "fts_rank":        float(r.rank),
             }
             for r in rows
+            if stream != "A" or _is_patient_allowed({"document_id": r.document_id, "source": r.source, "citation": r.citation})
         ]
     except Exception as exc:
         print(f"[agent_p] FTS error: {exc}")
@@ -226,8 +256,8 @@ def agent_p(state: AIHPSState) -> dict:
 
     # Pass language=None so the multilingual model returns results regardless of
     # how the chunk language field was stored (en/EN/english/etc.)
-    semantic = _semantic_search(query, None, top_k * 3)
-    fts = _fts_search(query, language, top_k * 2)
+    semantic = _semantic_search(query, None, top_k * 3, stream)
+    fts = _fts_search(query, language, top_k * 2, stream)
     top_chunks = _merge(semantic, fts, top_k=top_k, min_score=min_score)
 
     # If nothing passes the threshold, relax it once before giving up

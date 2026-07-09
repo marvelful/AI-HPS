@@ -286,8 +286,10 @@ def list_users(
     skip: int = 0,
     limit: int = Query(50, le=200),
     db: Session = Depends(get_db),
-    _=Depends(require_admin),
+    actor: User = Depends(get_current_user),
 ):
+    if actor.role not in {"super_admin", "admin", "department_admin", "department_head"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
     items, total = service.list_users_combined(db, role, department_id, is_active, search, skip, limit)
     return schemas.UserListResponse(items=items, total=total, skip=skip, limit=limit)
 

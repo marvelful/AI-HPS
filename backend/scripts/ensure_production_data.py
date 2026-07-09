@@ -71,6 +71,10 @@ def _align_schema(db) -> None:
     db.execute(text("CREATE INDEX IF NOT EXISTS idx_kchunks_search ON aihps_procedures.knowledge_chunks USING GIN(search_vector)"))
     db.execute(text("ALTER TABLE aihps_auth.lockout_records DROP CONSTRAINT IF EXISTS lockout_records_user_id_fkey"))
     db.execute(text("ALTER TABLE aihps_auth.token_blacklist DROP CONSTRAINT IF EXISTS token_blacklist_user_id_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_entries DROP CONSTRAINT IF EXISTS procedure_entries_created_by_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_entries DROP CONSTRAINT IF EXISTS procedure_entries_updated_by_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_versions DROP CONSTRAINT IF EXISTS procedure_versions_created_by_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_approvals DROP CONSTRAINT IF EXISTS procedure_approvals_approver_id_fkey"))
     db.commit()
 
 
@@ -231,8 +235,9 @@ def _seed_procedures(db, docs: dict[str, list[dict]], sources: dict[str, Knowled
         existing.steps = []
         existing.compliance_annotations = []
         existing.knowledge_domain = first.get("knowledge_domain") or "who_guideline"
-        existing.stream_target = "both"
-        existing.applicable_roles = ["doctor", "nurse", "staff", "patient"]
+        is_patient_facing = (first.get("source") or "").lower() == "who guidelines on hand hygiene in health care.pdf"
+        existing.stream_target = "both" if is_patient_facing else "B"
+        existing.applicable_roles = ["doctor", "nurse", "staff"] + (["patient"] if is_patient_facing else [])
         existing.risk_level = "medium"
         existing.status = "published"
         existing.department_id = dept.id if dept else None

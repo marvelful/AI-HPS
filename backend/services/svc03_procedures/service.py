@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from shared.models.auth import User
+from shared.models.auth import Admin, Staff, User
 from shared.models.procedures import (
     Category, Department, NavigationPath,
     ProcedureApproval, ProcedureEntry, ProcedureVersion,
@@ -21,7 +21,9 @@ from shared.models.procedures import (
 from services.svc03_procedures import schemas
 
 ADMIN_ROLES = {"super_admin", "admin", "department_admin"}
-APPROVER_ROLES = {"super_admin", "admin", "department_admin"}
+HEAD_ROLES = {"department_head", "department_admin"}
+CREATOR_ROLES = ADMIN_ROLES | {"department_head"}
+APPROVER_ROLES = ADMIN_ROLES | {"department_head"}
 REQUIRED_APPROVALS = 2
 
 
@@ -36,9 +38,14 @@ def _require_admin(user: User) -> None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
 
 
+def _require_procedure_creator(user: User) -> None:
+    if user.role not in CREATOR_ROLES:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only department heads and admins can create procedures")
+
+
 def _require_approver(user: User) -> None:
     if user.role not in APPROVER_ROLES:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Approver role required (admin / department_admin)")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Approver role required")
 
 
 def _get_entry_or_404(db: Session, entry_id: uuid.UUID) -> ProcedureEntry:
@@ -46,6 +53,35 @@ def _get_entry_or_404(db: Session, entry_id: uuid.UUID) -> ProcedureEntry:
     if not entry:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Procedure not found")
     return entry
+
+
+def _find_user_like(db: Session, user_id: uuid.UUID):
+    return (
+        db.query(User).filter(User.id == user_id).first()
+        or db.query(Admin).filter(Admin.id == user_id).first()
+        or db.query(Staff).filter(Staff.id == user_id).first()
+    )
+
+
+def _create_requested_approvals(db: Session, entry: ProcedureEntry, approver_ids: list[uuid.UUID]) -> int:
+    seen: set[uuid.UUID] = set()
+    created = 0
+    for approver_id in approver_ids:
+        if approver_id in seen or approver_id == entry.created_by:
+            continue
+        seen.add(approver_id)
+        approver = _find_user_like(db, approver_id)
+        if not approver or approver.role not in APPROVER_ROLES:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Selected approver must be an active department head or admin")
+        existing = (
+            db.query(ProcedureApproval)
+            .filter(ProcedureApproval.entry_id == entry.id, ProcedureApproval.approver_id == approver_id)
+            .first()
+        )
+        if not existing:
+            db.add(ProcedureApproval(entry_id=entry.id, approver_id=approver_id, decision="pending"))
+            created += 1
+    return created
 
 
 # ── Departments ──────────────────────────────────────────────────────────────
@@ -176,8 +212,16 @@ def list_procedures(
     language: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
+    actor: User | None = None,
 ) -> tuple[list[ProcedureEntry], int]:
     q = db.query(ProcedureEntry)
+    if actor and actor.role == "patient":
+        q = q.filter(ProcedureEntry.stream_target.in_(["A", "both"]))
+    if actor and status_filter == "pending" and actor.role not in ADMIN_ROLES:
+        q = q.join(ProcedureApproval, ProcedureApproval.entry_id == ProcedureEntry.id).filter(
+            ProcedureApproval.approver_id == actor.id,
+            ProcedureApproval.decision == "pending",
+        )
     if status_filter:
         q = q.filter(ProcedureEntry.status == status_filter)
     if stream_filter:
@@ -196,7 +240,7 @@ def get_procedure(db: Session, entry_id: uuid.UUID) -> ProcedureEntry:
 
 
 def create_procedure(db: Session, data: schemas.ProcedureCreate, actor: User) -> ProcedureEntry:
-    _require_admin(actor)
+    _require_procedure_creator(actor)
     entry = ProcedureEntry(
         title=data.title,
         summary=data.summary,
@@ -216,6 +260,10 @@ def create_procedure(db: Session, data: schemas.ProcedureCreate, actor: User) ->
         version=1,
     )
     db.add(entry)
+    db.flush()
+    if data.approver_ids:
+        _create_requested_approvals(db, entry, data.approver_ids)
+        entry.status = "pending"
     db.commit()
     db.refresh(entry)
     return entry
@@ -243,7 +291,7 @@ def update_procedure(
 
 def delete_procedure(db: Session, entry_id: uuid.UUID, actor: User) -> None:
     """Hard delete is only allowed for drafts by the author or admin."""
-    _require_admin(actor)
+    _require_procedure_creator(actor)
     entry = _get_entry_or_404(db, entry_id)
     if entry.status not in {"draft", "archived"}:
         raise HTTPException(
@@ -256,12 +304,17 @@ def delete_procedure(db: Session, entry_id: uuid.UUID, actor: User) -> None:
 
 # ── Procedures — Approval State Machine ─────────────────────────────────────
 
-def submit_for_approval(db: Session, entry_id: uuid.UUID, actor: User) -> ProcedureEntry:
+def submit_for_approval(
+    db: Session, entry_id: uuid.UUID, actor: User, data: schemas.SubmitApprovalRequest | None = None
+) -> ProcedureEntry:
     entry = _get_entry_or_404(db, entry_id)
     if entry.status != "draft":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only draft procedures can be submitted")
     if entry.created_by != actor.id and actor.role not in ADMIN_ROLES:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or admin may submit this procedure")
+    requested = data.approver_ids if data else []
+    if not requested:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Select at least one department head or admin approver")
 
     # Snapshot current version before it enters review
     snapshot = ProcedureVersion(
@@ -280,6 +333,7 @@ def submit_for_approval(db: Session, entry_id: uuid.UUID, actor: User) -> Proced
         created_by=actor.id,
     )
     db.add(snapshot)
+    _create_requested_approvals(db, entry, requested)
 
     entry.status = "pending"
     entry.updated_by = actor.id
@@ -301,7 +355,6 @@ def approve_procedure(
     if entry.created_by == actor.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Authors cannot approve their own procedures")
 
-    # Check if approver already acted on this procedure in this cycle
     existing = (
         db.query(ProcedureApproval)
         .filter(
@@ -310,21 +363,28 @@ def approve_procedure(
         )
         .first()
     )
-    if existing:
+    requested_count = db.query(ProcedureApproval).filter(ProcedureApproval.entry_id == entry_id).count()
+    if requested_count and not existing:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This procedure was not assigned to you for approval")
+    if existing and existing.decision != "pending":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You have already acted on this procedure")
 
     if action.decision == "rejected":
         return _reject_procedure(db, entry, action, actor)
 
-    # Record approval
-    approval = ProcedureApproval(
-        entry_id=entry.id,
-        approver_id=actor.id,
-        decision="approved",
-        comment=action.comment,
-        decided_at=_now(),
-    )
-    db.add(approval)
+    if existing:
+        existing.decision = "approved"
+        existing.comment = action.comment
+        existing.decided_at = _now()
+    else:
+        approval = ProcedureApproval(
+            entry_id=entry.id,
+            approver_id=actor.id,
+            decision="approved",
+            comment=action.comment,
+            decided_at=_now(),
+        )
+        db.add(approval)
     db.flush()
 
     # Count approvals for this cycle
@@ -337,7 +397,8 @@ def approve_procedure(
         .count()
     )
 
-    if approval_count >= REQUIRED_APPROVALS:
+    required = requested_count or REQUIRED_APPROVALS
+    if approval_count >= required:
         entry.status = "published"
         entry.published_at = _now()
         entry.version += 1
@@ -351,14 +412,23 @@ def approve_procedure(
 def _reject_procedure(
     db: Session, entry: ProcedureEntry, action: schemas.ApprovalAction, actor: User
 ) -> ProcedureEntry:
-    rejection = ProcedureApproval(
-        entry_id=entry.id,
-        approver_id=actor.id,
-        decision="rejected",
-        comment=action.comment,
-        decided_at=_now(),
+    existing = (
+        db.query(ProcedureApproval)
+        .filter(ProcedureApproval.entry_id == entry.id, ProcedureApproval.approver_id == actor.id)
+        .first()
     )
-    db.add(rejection)
+    if existing:
+        existing.decision = "rejected"
+        existing.comment = action.comment
+        existing.decided_at = _now()
+    else:
+        db.add(ProcedureApproval(
+            entry_id=entry.id,
+            approver_id=actor.id,
+            decision="rejected",
+            comment=action.comment,
+            decided_at=_now(),
+        ))
     # Clear prior approvals for this cycle so it restarts clean
     db.query(ProcedureApproval).filter(
         ProcedureApproval.entry_id == entry.id,

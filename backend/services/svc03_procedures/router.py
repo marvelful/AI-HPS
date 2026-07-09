@@ -170,9 +170,9 @@ def list_procedures(
     skip: int = 0,
     limit: int = Query(50, le=200),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    actor: User = Depends(get_current_user),
 ):
-    items, total = service.list_procedures(db, proc_status, stream, dept_id, language, skip, limit)
+    items, total = service.list_procedures(db, proc_status, stream, dept_id, language, skip, limit, actor)
     return schemas.ProcedureListResponse(items=items, total=total, skip=skip, limit=limit)
 
 
@@ -234,11 +234,12 @@ def delete_procedure(
 @router.post("/procedures/{entry_id}/submit", response_model=schemas.ProcedureResponse)
 def submit_for_approval(
     entry_id: uuid.UUID,
+    body: schemas.SubmitApprovalRequest,
     bg: BackgroundTasks,
     db: Session = Depends(get_db),
     actor: User = Depends(get_current_user),
 ):
-    entry = service.submit_for_approval(db, entry_id, actor)
+    entry = service.submit_for_approval(db, entry_id, actor, body)
     bg.add_task(
         publish_audit, "procedure.submitted", str(actor.id), "procedure", str(entry_id),
         {"status": "pending"}, {},

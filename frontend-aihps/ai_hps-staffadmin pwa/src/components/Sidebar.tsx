@@ -16,16 +16,16 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { key: 'nav-dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', badge: null, accentColor: null },
-  { key: 'nav-procedures', label: 'Procedures', icon: ClipboardList, href: '/procedures', badge: null, accentColor: null },
-  { key: 'nav-assistant', label: 'AI Assistant', icon: Sparkles, href: '/ai-assistant', badge: null, accentColor: 'purple' },
-  { key: 'nav-approvals', label: 'Approvals', icon: CheckSquare, href: '/approvals', badge: null, accentColor: null },
-  { key: 'nav-analytics', label: 'Analytics', icon: BarChart2, href: '/analytics', badge: null, accentColor: null },
-  { key: 'nav-audit', label: 'Audit Log', icon: Shield, href: '/audit', badge: null, accentColor: null },
-  { key: 'nav-staff', label: 'Hospital Staff', icon: Users, href: '/staff', badge: null, accentColor: null },
-  { key: 'nav-patients', label: 'Patients', icon: UserCircle, href: '/patients', badge: null, accentColor: null },
-  { key: 'nav-monitor', label: 'AI Monitor', icon: Activity, href: '/ai-monitor', badge: null, accentColor: null },
-  { key: 'nav-notifications', label: 'Notifications', icon: Bell, href: '/notifications', badge: null, accentColor: null },
+  { key: 'nav-dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['all'], badge: null, accentColor: null },
+  { key: 'nav-procedures', label: 'Procedures', icon: ClipboardList, href: '/procedures', roles: ['all'], badge: null, accentColor: null },
+  { key: 'nav-assistant', label: 'AI Assistant', icon: Sparkles, href: '/ai-assistant', roles: ['all'], badge: null, accentColor: 'purple' },
+  { key: 'nav-approvals', label: 'Approvals', icon: CheckSquare, href: '/approvals', roles: ['all'], badge: null, accentColor: null },
+  { key: 'nav-notifications', label: 'Notifications', icon: Bell, href: '/notifications', roles: ['all'], badge: null, accentColor: null },
+  { key: 'nav-analytics', label: 'Analytics', icon: BarChart2, href: '/analytics', roles: ['admin'], badge: null, accentColor: null },
+  { key: 'nav-audit', label: 'Audit Log', icon: Shield, href: '/audit', roles: ['admin'], badge: null, accentColor: null },
+  { key: 'nav-staff', label: 'Hospital Staff', icon: Users, href: '/staff', roles: ['admin'], badge: null, accentColor: null },
+  { key: 'nav-patients', label: 'Patients', icon: UserCircle, href: '/patients', roles: ['admin'], badge: null, accentColor: null },
+  { key: 'nav-monitor', label: 'AI Monitor', icon: Activity, href: '/ai-monitor', roles: ['admin'], badge: null, accentColor: null },
 ];
 
 function getInitialColor(name: string): string {
@@ -44,6 +44,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const initials = displayName.split(' ').filter(Boolean).slice(0, 2).map((n: string) => n[0].toUpperCase()).join('');
   const avatarColor = getInitialColor(displayName);
   const roleLabel = user?.role?.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) ?? 'Staff';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'department_admin';
+  const visibleNavItems = navItems.filter((item) => item.roles.includes('all') || isAdmin);
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -87,7 +89,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const active = isActive(item.href);
             const isAI = item.key === 'nav-assistant';
             return (
@@ -125,7 +127,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         {/* Role badge */}
         <div className="px-4 py-2 border-t border-border">
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-clinical-amber/40 bg-clinical-amber-bg/50">
-            <span className="label-meta text-clinical-amber">Administrator Access</span>
+            <span className="label-meta text-clinical-amber">{isAdmin ? 'Administrator Access' : 'Staff Access'}</span>
           </div>
         </div>
 

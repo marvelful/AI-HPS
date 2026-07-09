@@ -118,6 +118,7 @@ class ProcedureCreate(BaseModel):
     category_id: uuid.UUID | None = None
     language: str = "EN"
     document_url: str | None = None
+    approver_ids: list[uuid.UUID] = []
 
     @field_validator("knowledge_domain")
     @classmethod
@@ -161,6 +162,10 @@ class ProcedureUpdate(BaseModel):
     department_id: uuid.UUID | None = None
     category_id: uuid.UUID | None = None
     document_url: str | None = None
+
+
+class SubmitApprovalRequest(BaseModel):
+    approver_ids: list[uuid.UUID] = []
 
 
 class ProcedureResponse(BaseModel):

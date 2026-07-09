@@ -226,6 +226,7 @@ def rebuild_from_jsonl() -> int:
             # Identity
             "chunk_id":        chunk["chunk_id"],
             "document_id":     chunk["document_id"],
+            "source":          chunk.get("source", ""),
             # Display / citation
             "title":           chunk.get("title", ""),
             "section":         chunk.get("section", ""),

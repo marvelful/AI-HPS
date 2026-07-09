@@ -259,8 +259,8 @@ export const proceduresApi = {
     svc03Axios.post<Procedure>('/api/svc03/procedures', data).then((r) => r.data),
   update: (id: string, data: any) =>
     svc03Axios.put<Procedure>(`/api/svc03/procedures/${id}`, data).then((r) => r.data),
-  submitApproval: (id: string) =>
-    svc03Axios.post(`/api/svc03/procedures/${id}/submit`).then((r) => r.data),
+  submitApproval: (id: string, approver_ids: string[] = []) =>
+    svc03Axios.post(`/api/svc03/procedures/${id}/submit`, { approver_ids }).then((r) => r.data),
   approve: (id: string, decision: 'approved' | 'rejected', comment?: string) =>
     svc03Axios.post(`/api/svc03/procedures/${id}/approve`, { decision, comment }).then((r) => r.data),
   listDepartments: (activeOnly = true) =>

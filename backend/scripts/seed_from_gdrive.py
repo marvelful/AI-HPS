@@ -140,7 +140,7 @@ def main():
                 existing.content = item.get("summary") or title
                 existing.document_url = document_url
                 existing.department_id = department_id
-                existing.stream_target = item.get("stream_target", "B")
+                existing.stream_target = "B"
                 existing.risk_level = item.get("risk_level", "medium")
                 existing.language = item.get("language", "EN")
                 existing.knowledge_domain = item.get(
@@ -166,7 +166,7 @@ def main():
                         "knowledge_domain",
                         "clinical_procedure"
                     ),
-                    stream_target=item.get("stream_target", "B"),
+                    stream_target="B",
                     risk_level=item.get("risk_level", "medium"),
                     status="published",
                     department_id=department_id,
