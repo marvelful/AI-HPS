@@ -123,7 +123,7 @@ The deploy script preserves them during archive deployments.
 After `aihps.tech` resolves to `206.189.27.60`, update the VPS production domain value:
 
 ```text
-AIHPS_DOMAIN=aihps.tech
+AIHPS_DOMAIN=aihps.tech, www.aihps.tech
 ```
 
 Then restart the stack. Caddy will request and renew HTTPS certificates automatically.
