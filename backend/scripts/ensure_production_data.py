@@ -30,9 +30,10 @@ from services.svc02_auth.service import hash_password
 ADMIN_EMAIL = os.getenv("AIHPS_SEED_ADMIN_EMAIL", "admin@aihps.tech")
 ADMIN_PASSWORD = os.getenv("AIHPS_SEED_ADMIN_PASSWORD", "AihpsAdmin#2026!")
 
-ROOT = Path(__file__).resolve().parents[2]
-KNOWLEDGE_JSONL = ROOT / "backend" / "knowledge" / "knowledge_chunks.jsonl"
-PROCEDURES_DIR = ROOT / "PROCEDURES"
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = BACKEND_ROOT.parent
+KNOWLEDGE_JSONL = BACKEND_ROOT / "knowledge" / "knowledge_chunks.jsonl"
+PROCEDURES_DIR = PROJECT_ROOT / "PROCEDURES"
 PUBLIC_DOCS_BASE = os.getenv("AIHPS_PUBLIC_DOCS_BASE", "https://aihps.tech/procedure-docs")
 
 
@@ -48,11 +49,21 @@ DEPARTMENT_ALIASES = {
     "emergency": "Emergency",
 }
 
+PROCEDURE_FOLDER_BY_DEPARTMENT = {
+    "Blood Bank": "BLOODBANK",
+    "ICU": "ICU",
+    "Infection Control": "Infection Control Department",
+    "Maternity": "MATERNITY",
+    "Surgery": "SURGERY",
+    "Emergency": "EMERGENCY",
+}
+
 
 def _align_schema(db) -> None:
     Base.metadata.create_all(bind=engine)
     db.execute(text("ALTER TABLE aihps_auth.users ADD COLUMN IF NOT EXISTS phone VARCHAR(50)"))
     db.execute(text("ALTER TABLE aihps_auth.users ADD COLUMN IF NOT EXISTS date_of_birth DATE"))
+    db.execute(text("ALTER TABLE aihps_procedures.departments ADD COLUMN IF NOT EXISTS name_fr VARCHAR(255)"))
     db.execute(text("ALTER TABLE aihps_procedures.categories ADD COLUMN IF NOT EXISTS knowledge_domain VARCHAR(60) NOT NULL DEFAULT 'clinical_procedure'"))
     db.execute(text("ALTER TABLE aihps_procedures.procedure_entries ADD COLUMN IF NOT EXISTS knowledge_domain VARCHAR(60) NOT NULL DEFAULT 'clinical_procedure'"))
     db.execute(text("ALTER TABLE aihps_procedures.procedure_entries ADD COLUMN IF NOT EXISTS source_id UUID"))
@@ -103,6 +114,20 @@ def _pdf_url_by_filename() -> dict[str, str]:
         rel = pdf.relative_to(PROCEDURES_DIR).as_posix()
         urls[pdf.name.lower()] = f"{PUBLIC_DOCS_BASE}/{quote(rel)}"
     return urls
+
+
+def _document_url(first_chunk: dict, pdf_urls: dict[str, str]) -> str | None:
+    source_name = str(first_chunk.get("source") or "").strip()
+    if not source_name:
+        return None
+    existing = pdf_urls.get(source_name.lower())
+    if existing:
+        return existing
+    department = DEPARTMENT_ALIASES.get(str(first_chunk.get("department", "")).lower(), str(first_chunk.get("department", "")))
+    folder = PROCEDURE_FOLDER_BY_DEPARTMENT.get(department)
+    if not folder:
+        return None
+    return f"{PUBLIC_DOCS_BASE}/{quote(f'{folder}/{source_name}')}"
 
 
 def _load_chunks() -> list[dict]:
@@ -193,7 +218,7 @@ def _seed_procedures(db, docs: dict[str, list[dict]], sources: dict[str, Knowled
         dept = dept_by_name.get(str(first.get("department", "")).lower())
         content = "\n\n".join(c.get("content", "") for c in doc_chunks[:8]).strip()
         summary = (first.get("content") or "").replace("\n", " ").strip()[:700]
-        document_url = pdf_urls.get(str(first.get("source", "")).lower())
+        document_url = _document_url(first, pdf_urls)
         if existing is None:
             existing = ProcedureEntry(
                 title=(first.get("source") or first.get("title") or doc_id).replace(".pdf", "").strip()[:500],
