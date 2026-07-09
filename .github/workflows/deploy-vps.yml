@@ -19,6 +19,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate deployment secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          test -n "$VPS_HOST" || (echo "Missing repository secret: VPS_HOST" && exit 1)
+          test -n "$VPS_USER" || (echo "Missing repository secret: VPS_USER" && exit 1)
+          test -n "$VPS_SSH_PORT" || (echo "Missing repository secret: VPS_SSH_PORT" && exit 1)
+          test -n "$VPS_SSH_KEY" || (echo "Missing repository secret: VPS_SSH_KEY" && exit 1)
+
       - name: Create release archive
         run: git archive --format=tar.gz --output=aihps-release.tgz HEAD
 
