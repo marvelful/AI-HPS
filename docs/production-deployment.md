@@ -46,6 +46,8 @@ VPS_SSH_KEY=<full private key content>
 
 The secret names must match exactly. For example, do not create a secret named `aihps` for the private key. The workflow reads only `VPS_SSH_KEY`.
 
+For compatibility with the current repository setup, the deploy workflow also accepts a private-key secret named `AIHPS`. Prefer `VPS_SSH_KEY` for clarity, but either `VPS_SSH_KEY` or `AIHPS` can be used.
+
 `VPS_SSH_KEY` must contain the full private key from the local machine:
 
 ```text
