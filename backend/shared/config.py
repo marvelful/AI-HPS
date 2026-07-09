@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # ── Email / SMTP ──────────────────────────────────────────────────────────
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
     EMAIL_FROM: str = ""
     EMAIL_FROM_NAME: str = "AI-HPS"
     EMAIL_PASSWORD: str = ""

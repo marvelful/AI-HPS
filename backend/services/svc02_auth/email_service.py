@@ -7,7 +7,21 @@ from shared.config import get_settings
 settings = get_settings()
 
 
+def _smtp_identity() -> tuple[str, str, str]:
+    sender = settings.SMTP_FROM or settings.EMAIL_FROM
+    username = settings.SMTP_USER or settings.EMAIL_FROM
+    password = settings.SMTP_PASSWORD or settings.EMAIL_PASSWORD
+    if not sender:
+        raise RuntimeError("Email sender is not configured. Set SMTP_FROM or EMAIL_FROM.")
+    if not username:
+        raise RuntimeError("SMTP username is not configured. Set SMTP_USER or EMAIL_FROM.")
+    if not password:
+        raise RuntimeError("SMTP password is not configured. Set SMTP_PASSWORD or EMAIL_PASSWORD.")
+    return sender, username, password
+
+
 def send_otp_email(to_email: str, otp_code: str, full_name: str = "") -> None:
+    sender, username, password = _smtp_identity()
     greeting = f"Hello{f', {full_name.split()[0]}' if full_name else ''},"
 
     html = f"""
@@ -55,7 +69,7 @@ def send_otp_email(to_email: str, otp_code: str, full_name: str = "") -> None:
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"Your AI-HPS verification code: {otp_code}"
-    msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
+    msg["From"] = f"{settings.EMAIL_FROM_NAME} <{sender}>"
     msg["To"] = to_email
 
     msg.attach(MIMEText(plain, "plain"))
@@ -65,5 +79,5 @@ def send_otp_email(to_email: str, otp_code: str, full_name: str = "") -> None:
         server.ehlo()
         server.starttls()
         server.ehlo()
-        server.login(settings.EMAIL_FROM, settings.EMAIL_PASSWORD)
-        server.sendmail(settings.EMAIL_FROM, to_email, msg.as_string())
+        server.login(username, password)
+        server.sendmail(sender, to_email, msg.as_string())
