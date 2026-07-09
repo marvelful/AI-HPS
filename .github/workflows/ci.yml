@@ -92,7 +92,9 @@ jobs:
 
       - name: Build Android debug APK
         working-directory: frontend-aihps/ai_hps_patient mobile/android
-        run: ./gradlew assembleDebug --no-daemon --console=plain
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --console=plain
 
       - name: Upload Android debug APK
         uses: actions/upload-artifact@v4
