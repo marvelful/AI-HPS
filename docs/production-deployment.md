@@ -44,6 +44,8 @@ VPS_SSH_PORT=22
 VPS_SSH_KEY=<full private key content>
 ```
 
+The secret names must match exactly. For example, do not create a secret named `aihps` for the private key. The workflow reads only `VPS_SSH_KEY`.
+
 `VPS_SSH_KEY` must contain the full private key from the local machine:
 
 ```text
@@ -90,6 +92,8 @@ Host: www
 Value: 206.189.27.60
 TTL: Automatic
 ```
+
+Do not keep both an `A Record` and a `CNAME Record` for `www`. If `A Record www -> 206.189.27.60` exists, remove `CNAME www -> aihps.tech.`.
 
 After DNS is saved, wait for propagation. It can be quick, but it may take several hours.
 
@@ -144,4 +148,3 @@ https://aihps.tech returns HTTP 200
 https://aihps.tech/api/pipeline/health returns status ok
 All Docker Compose services are running on the VPS
 ```
-
