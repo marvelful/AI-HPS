@@ -1,0 +1,3 @@
+AI-HPS deploy verification marker
+Timestamp: 2026-07-09T02:41:41+01:00
+Purpose: confirms GitHub Actions deployed this repository revision to the VPS.
