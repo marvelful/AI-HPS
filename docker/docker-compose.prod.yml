@@ -113,6 +113,8 @@ services:
     container_name: aihps_svc_agents
     command: uvicorn agents.main:app --host 0.0.0.0 --port 8020
     env_file: ../backend/.env
+    volumes:
+      - kb_index_data:/app/kb_index
     depends_on:
       postgres:
         condition: service_healthy
@@ -181,3 +183,4 @@ volumes:
   rabbitmq_data:
   caddy_data:
   caddy_config:
+  kb_index_data:
