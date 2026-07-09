@@ -141,6 +141,17 @@ services:
       - svc_agents
     restart: unless-stopped
 
+  patientmobile:
+    build:
+      context: ../frontend-aihps/ai_hps_patient mobile
+      dockerfile: Dockerfile
+    container_name: aihps_patientmobile
+    depends_on:
+      - svc02_auth
+      - svc03_procedures
+      - svc_agents
+    restart: unless-stopped
+
   caddy:
     image: caddy:2.8-alpine
     container_name: aihps_caddy
@@ -151,10 +162,12 @@ services:
       AIHPS_DOMAIN: ${AIHPS_DOMAIN:-http://206.189.27.60}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../PROCEDURES:/srv/procedure-docs:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - staffadmin
+      - patientmobile
       - svc02_auth
       - svc03_procedures
       - svc05_analytics

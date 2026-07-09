@@ -1,6 +1,11 @@
 {$AIHPS_DOMAIN} {
 	encode gzip zstd
 
+	handle_path /procedure-docs/* {
+		root * /srv/procedure-docs
+		file_server
+	}
+
 	handle_path /api/auth/* {
 		rewrite * /auth{uri}
 		reverse_proxy svc02_auth:8002
@@ -26,5 +31,27 @@
 
 	handle {
 		reverse_proxy staffadmin:3002
+	}
+}
+
+patient.aihps.tech {
+	encode gzip zstd
+
+	handle_path /api/auth/* {
+		rewrite * /auth{uri}
+		reverse_proxy svc02_auth:8002
+	}
+
+	handle_path /api/svc03/* {
+		reverse_proxy svc03_procedures:8003
+	}
+
+	handle_path /api/pipeline/* {
+		rewrite * /pipeline{uri}
+		reverse_proxy svc_agents:8020
+	}
+
+	handle {
+		reverse_proxy patientmobile:3004
 	}
 }

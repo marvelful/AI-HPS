@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import Badge from '@/components/ui/Badge';
 import RiskDot from '@/components/ui/RiskDot';
+import EmptyState from '@/components/ui/EmptyState';
 import { proceduresApi, type Procedure } from '@/lib/api';
 
 function mapStreamTarget(streamTarget: string): 'staff-only' | 'patient' | 'both' {
@@ -46,24 +47,16 @@ function formatRelativeTime(dateStr: string): string {
   }
 }
 
-// Static fallback used while loading or on error
-const fallbackProcedures = [
-  { id: 'proc-001', title: 'Central Venous Line Insertion', summary: 'Step-by-step guide for CVC placement in ICU settings', department: 'ICU', stream: 'staff-only' as const, risk: 'critical' as const, status: 'published' as const, updated: '2 days ago' },
-  { id: 'proc-002', title: 'Pre-operative Preparation Protocol', summary: 'Patient preparation checklist before surgical procedures', department: 'Surgery', stream: 'both' as const, risk: 'medium' as const, status: 'published' as const, updated: '4 days ago' },
-  { id: 'proc-003', title: 'Sepsis Management Protocol', summary: 'Early recognition and treatment escalation pathway', department: 'ICU', stream: 'staff-only' as const, risk: 'critical' as const, status: 'pending' as const, updated: '1 day ago' },
-  { id: 'proc-004', title: 'Blood Pressure Monitoring Guide', summary: 'Standardized BP measurement and documentation', department: 'Cardiology', stream: 'both' as const, risk: 'low' as const, status: 'published' as const, updated: '6 days ago' },
-  { id: 'proc-005', title: 'Medication Administration Safety', summary: 'Five rights of medication administration for ward nurses', department: 'Pharmacy', stream: 'both' as const, risk: 'medium' as const, status: 'draft' as const, updated: '3 hours ago' },
-];
-
 export default function DashboardRecentProcedures() {
-  const { data: proceduresData } = useQuery({
+  const { data: proceduresData, isLoading, error } = useQuery({
     queryKey: ['procedures-recent'],
     queryFn: () => proceduresApi.list({ limit: 5, status: 'published' }),
     staleTime: 60_000,
   });
 
-  const procedures = proceduresData?.items?.length
-    ? proceduresData.items.slice(0, 5).map((p: Procedure) => ({
+  const procedures = (proceduresData?.items ?? [])
+    .slice(0, 5)
+    .map((p: Procedure) => ({
         id: p.id,
         title: p.title,
         summary: p.summary ?? '',
@@ -72,8 +65,7 @@ export default function DashboardRecentProcedures() {
         risk: mapRiskLevel(p.risk_level),
         status: mapStatus(p.status),
         updated: formatRelativeTime(p.updated_at),
-      }))
-    : fallbackProcedures;
+      }));
 
   return (
     <div className="bg-card rounded-md shadow-card border border-border overflow-hidden h-full">
@@ -94,7 +86,33 @@ export default function DashboardRecentProcedures() {
             </tr>
           </thead>
           <tbody>
-            {procedures.map((proc, idx) => (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={`recent-proc-loading-${idx}`} className="border-b border-border last:border-0">
+                  {Array.from({ length: 7 }).map((__, col) => (
+                    <td key={`recent-proc-loading-${idx}-${col}`} className="px-4 py-3">
+                      <div className="h-4 rounded bg-muted animate-pulse" style={{ width: col === 0 ? 180 : 80 }} />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : error ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-12 text-center text-clinical-red" style={{ fontSize: '14px' }}>
+                  Failed to load recent procedures.
+                </td>
+              </tr>
+            ) : procedures.length === 0 ? (
+              <tr>
+                <td colSpan={7}>
+                  <EmptyState
+                    icon={<span className="text-3xl">+</span>}
+                    title="No recent procedures"
+                    description="Published procedures will appear here after the knowledge base is loaded."
+                  />
+                </td>
+              </tr>
+            ) : procedures.map((proc, idx) => (
               <tr
                 key={proc.id}
                 className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"

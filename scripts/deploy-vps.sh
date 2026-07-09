@@ -34,4 +34,8 @@ cd "$APP_DIR"
 
 docker compose -f "$COMPOSE_FILE" --env-file .env.prod build
 docker compose -f "$COMPOSE_FILE" --env-file .env.prod up -d --remove-orphans
+docker compose -f "$COMPOSE_FILE" --env-file .env.prod exec -T svc02_auth python scripts/migrate_user_split.py
+docker compose -f "$COMPOSE_FILE" --env-file .env.prod exec -T svc02_auth python scripts/ensure_production_data.py
+docker compose -f "$COMPOSE_FILE" --env-file .env.prod exec -T svc_agents python -c "from services.svc07_kb_sync.service import rebuild_from_jsonl; print({'vectors_indexed': rebuild_from_jsonl()})"
+docker compose -f "$COMPOSE_FILE" --env-file .env.prod restart svc03_procedures svc_agents
 docker image prune -f
