@@ -51,6 +51,10 @@ services:
     container_name: aihps_svc02_auth
     command: uvicorn services.svc02_auth.main:app --host 0.0.0.0 --port 8002
     env_file: ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,6 +71,10 @@ services:
     container_name: aihps_svc03_procedures
     command: uvicorn services.svc03_procedures.main:app --host 0.0.0.0 --port 8003
     env_file: ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,6 +91,10 @@ services:
     container_name: aihps_svc05_analytics
     command: uvicorn services.svc05_analytics.main:app --host 0.0.0.0 --port 8005
     env_file: ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,12 +109,34 @@ services:
     container_name: aihps_svc06_audit
     command: uvicorn services.svc06_audit.main:app --host 0.0.0.0 --port 8006
     env_file: ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  svc07_kb_sync:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aihps_svc07_kb_sync
+    command: uvicorn services.svc07_kb_sync.main:app --host 0.0.0.0 --port 8007
+    env_file: ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -113,6 +147,10 @@ services:
     container_name: aihps_svc_agents
     command: uvicorn agents.main:app --host 0.0.0.0 --port 8020
     env_file: ../backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
     volumes:
       - kb_index_data:/app/kb_index
     depends_on:
