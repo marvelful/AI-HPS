@@ -30,6 +30,10 @@ PATIENT_ROLES = ("patient",)
 # Everything else is staff
 
 DDL = """
+ALTER TABLE aihps_auth.users
+    ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
+    ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+
 -- ── patients ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS aihps_auth.patients (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
