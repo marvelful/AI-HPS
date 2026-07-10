@@ -55,3 +55,13 @@ patient.aihps.tech {
 		reverse_proxy patientmobile:3004
 	}
 }
+
+openwa.206.189.27.60.sslip.io, openwa.206-189-27-60.sslip.io, openwa.206.189.27.60.nip.io {
+	encode gzip zstd
+	reverse_proxy openwa-api:2785
+}
+
+http://206.189.27.60 {
+	encode gzip zstd
+	reverse_proxy openwa-api:2785
+}
