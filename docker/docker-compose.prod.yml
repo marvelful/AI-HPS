@@ -201,15 +201,23 @@ services:
     environment:
       AUTH_API_URL: http://svc02_auth:8002
       PIPELINE_API_URL: http://svc_agents:8020
+      OPENWA_API_URL: http://openwa-api:2785/api
+      OPENWA_API_KEY: ${OPENWA_API_KEY:?OPENWA_API_KEY is required}
       WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:?WHATSAPP_INTERNAL_TOKEN is required}
       WA_SESSION_ID: ${WA_SESSION_ID:-aihps-prod}
+      WA_WEBHOOK_SECRET: ${WA_WEBHOOK_SECRET:-}
       WA_ENABLE_STAFF_STREAM: ${WA_ENABLE_STAFF_STREAM:-true}
       WA_IGNORE_GROUPS: ${WA_IGNORE_GROUPS:-true}
+      MTARGET_URL: ${MTARGET_URL:-https://api-public-2.mtarget.fr/messages}
+      MTARGET_USERNAME: ${MTARGET_USERNAME:-}
+      MTARGET_PASSWORD: ${MTARGET_PASSWORD:-}
+      MTARGET_SERVICE_ID: ${MTARGET_SERVICE_ID:-}
     volumes:
-      - whatsapp_session_data:/app/_IGNORE_${WA_SESSION_ID:-aihps-prod}
-    shm_size: "1gb"
-    cap_add:
-      - SYS_ADMIN
+      - whatsapp_gateway_data:/app/data
+    networks:
+      default:
+        aliases:
+          - whatsapp-gateway
     depends_on:
       - svc02_auth
       - svc_agents
@@ -247,3 +255,4 @@ volumes:
   caddy_config:
   kb_index_data:
   whatsapp_session_data:
+  whatsapp_gateway_data:

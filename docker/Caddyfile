@@ -29,6 +29,11 @@
 		reverse_proxy svc_agents:8020
 	}
 
+	handle_path /api/whatsapp/* {
+		rewrite * /webhooks/openwa
+		reverse_proxy whatsapp-gateway:3030
+	}
+
 	handle {
 		reverse_proxy staffadmin:3002
 	}

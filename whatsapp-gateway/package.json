@@ -8,7 +8,6 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@open-wa/wa-automate": "4.76.0",
-    "axios": "1.7.9"
+    "axios": "^1.18.1"
   }
 }
