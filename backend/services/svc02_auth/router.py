@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from shared.database import get_db
 from shared.events import publish_audit
-from shared.models.auth import User
+from shared.config import get_settings
+from shared.models.auth import Admin, Patient, Staff, User
 from services.svc02_auth import schemas, service
 from services.svc02_auth.dependencies import (
     bearer_scheme,
@@ -19,6 +20,34 @@ from services.svc02_auth.dependencies import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _phone_digits(value: str | None) -> str:
+    return "".join(ch for ch in (value or "") if ch.isdigit())
+
+
+def _phone_matches(stored: str | None, incoming: str) -> bool:
+    stored_digits = _phone_digits(stored)
+    incoming_digits = _phone_digits(incoming)
+    if not stored_digits or not incoming_digits:
+        return False
+    if stored_digits == incoming_digits:
+        return True
+    if len(stored_digits) >= 9 and len(incoming_digits) >= 9:
+        return stored_digits[-9:] == incoming_digits[-9:]
+    return False
+
+
+def _whatsapp_identity_response(account, account_type: str, stream: str) -> schemas.WhatsAppIdentityResponse:
+    return schemas.WhatsAppIdentityResponse(
+        matched=True,
+        user_id=account.id,
+        full_name=account.full_name,
+        role=account.role,
+        account_type=account_type,
+        stream=stream,
+        is_active=account.is_active,
+    )
 
 
 def _audit_auth_event(event_type: str, user_id: str | None, email: str, user_type: str | None = None) -> None:
@@ -30,6 +59,33 @@ def _audit_auth_event(event_type: str, user_id: str | None, email: str, user_typ
         {"email": email},
         {"user_type": user_type} if user_type else {},
     )
+
+
+@router.get("/whatsapp/identity", response_model=schemas.WhatsAppIdentityResponse)
+def get_whatsapp_identity(
+    phone: str,
+    db: Session = Depends(get_db),
+    x_whatsapp_internal_token: str | None = Header(default=None),
+):
+    settings = get_settings()
+    if not settings.WHATSAPP_INTERNAL_TOKEN:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="WhatsApp integration is not configured")
+    if x_whatsapp_internal_token != settings.WHATSAPP_INTERNAL_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid WhatsApp integration token")
+
+    for model, account_type, stream in (
+        (Admin, "admin", "B"),
+        (Staff, "staff", "B"),
+        (User, "staff", "B"),
+        (Patient, "patient", "A"),
+    ):
+        for account in db.query(model).filter(model.is_active == True).all():  # noqa: E712
+            if getattr(account, "role", None) == "patient" and stream == "B":
+                continue
+            if _phone_matches(getattr(account, "phone", None), phone):
+                return _whatsapp_identity_response(account, account_type, stream)
+
+    return schemas.WhatsAppIdentityResponse(matched=False)
 
 
 @router.post("/login", response_model=schemas.TokenResponse)

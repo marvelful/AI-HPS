@@ -1,0 +1,14 @@
+{
+  "name": "aihps-whatsapp-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp gateway for AI-HPS using OpenWA.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@open-wa/wa-automate": "4.76.0",
+    "axios": "1.7.9"
+  }
+}

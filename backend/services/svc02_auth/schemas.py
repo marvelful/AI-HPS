@@ -144,3 +144,13 @@ class AdminResetPasswordRequest(BaseModel):
         if len(v) < 8:
             raise ValueError("New password must be at least 8 characters")
         return v
+
+
+class WhatsAppIdentityResponse(BaseModel):
+    matched: bool
+    user_id: uuid.UUID | None = None
+    full_name: str | None = None
+    role: str | None = None
+    account_type: Literal["admin", "staff", "patient", "anonymous"] = "anonymous"
+    stream: Literal["A", "B"] = "A"
+    is_active: bool = False

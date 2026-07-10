@@ -54,6 +54,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgresql@host.docker.internal:5432/AIHPS
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://aihps:aihps_dev_pass@rabbitmq:5672/
+      WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:-dev-whatsapp-token}
     volumes:
       - ../backend:/app
     extra_hosts:
@@ -183,6 +184,25 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  whatsapp_gateway:
+    build:
+      context: ../whatsapp-gateway
+      dockerfile: Dockerfile
+    container_name: aihps_whatsapp_gateway
+    environment:
+      AUTH_API_URL: http://svc02_auth:8002
+      PIPELINE_API_URL: http://svc_agents:8020
+      WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:-dev-whatsapp-token}
+      WA_SESSION_ID: ${WA_SESSION_ID:-aihps-dev}
+      WA_ENABLE_STAFF_STREAM: ${WA_ENABLE_STAFF_STREAM:-true}
+      WA_IGNORE_GROUPS: ${WA_IGNORE_GROUPS:-true}
+    volumes:
+      - whatsapp_session_data:/app/_IGNORE_${WA_SESSION_ID:-aihps-dev}
+    depends_on:
+      - svc02_auth
+      - svc_agents
+    restart: unless-stopped
+
   nginx:
     image: nginx:1.25-alpine
     container_name: aihps_gateway
@@ -197,8 +217,10 @@ services:
       - svc06_audit
       - svc07_kb_sync
       - svc_agents
+      - whatsapp_gateway
     restart: unless-stopped
 
 volumes:
   rabbitmq_data:
   redis_data:
+  whatsapp_session_data:

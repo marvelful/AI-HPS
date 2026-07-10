@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str = ""
     OTP_EXPIRE_MINUTES: int = 10
 
+    # Internal service-to-service token for the WhatsApp gateway.
+    WHATSAPP_INTERNAL_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

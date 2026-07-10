@@ -55,6 +55,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-aihps}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:?WHATSAPP_INTERNAL_TOKEN is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -192,6 +193,25 @@ services:
       - svc_agents
     restart: unless-stopped
 
+  whatsapp_gateway:
+    build:
+      context: ../whatsapp-gateway
+      dockerfile: Dockerfile
+    container_name: aihps_whatsapp_gateway
+    environment:
+      AUTH_API_URL: http://svc02_auth:8002
+      PIPELINE_API_URL: http://svc_agents:8020
+      WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:?WHATSAPP_INTERNAL_TOKEN is required}
+      WA_SESSION_ID: ${WA_SESSION_ID:-aihps-prod}
+      WA_ENABLE_STAFF_STREAM: ${WA_ENABLE_STAFF_STREAM:-true}
+      WA_IGNORE_GROUPS: ${WA_IGNORE_GROUPS:-true}
+    volumes:
+      - whatsapp_session_data:/app/_IGNORE_${WA_SESSION_ID:-aihps-prod}
+    depends_on:
+      - svc02_auth
+      - svc_agents
+    restart: unless-stopped
+
   caddy:
     image: caddy:2.8-alpine
     container_name: aihps_caddy
@@ -213,6 +233,7 @@ services:
       - svc05_analytics
       - svc06_audit
       - svc_agents
+      - whatsapp_gateway
     restart: unless-stopped
 
 volumes:
@@ -222,3 +243,4 @@ volumes:
   caddy_data:
   caddy_config:
   kb_index_data:
+  whatsapp_session_data:
