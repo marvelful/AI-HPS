@@ -7,7 +7,7 @@ Approval state machine:
     └──────(reject)──────┘                          (archive)──►archived
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -23,8 +23,9 @@ from services.svc03_procedures import schemas
 ADMIN_ROLES = {"super_admin", "admin", "department_admin"}
 HEAD_ROLES = {"department_head", "department_admin"}
 CREATOR_ROLES = ADMIN_ROLES | {"department_head"}
-APPROVER_ROLES = ADMIN_ROLES | {"department_head"}
+APPROVER_ROLES = ADMIN_ROLES | {"department_head", "doctor", "clinician", "nurse", "pharmacist", "lab_technician", "radiologist", "infection_control_officer", "staff"}
 REQUIRED_APPROVALS = 2
+PUBLICATION_DELAY = timedelta(days=3)
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ def _require_procedure_creator(user: User) -> None:
 
 
 def _require_approver(user: User) -> None:
-    if user.role not in APPROVER_ROLES:
+    if user.role == "patient":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Approver role required")
 
 
@@ -71,17 +72,34 @@ def _create_requested_approvals(db: Session, entry: ProcedureEntry, approver_ids
             continue
         seen.add(approver_id)
         approver = _find_user_like(db, approver_id)
-        if not approver or approver.role not in APPROVER_ROLES:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Selected approver must be an active department head or admin")
+        if not approver or approver.role not in APPROVER_ROLES or not getattr(approver, "is_active", True):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Selected reviewer must be an active staff member")
         existing = (
             db.query(ProcedureApproval)
             .filter(ProcedureApproval.entry_id == entry.id, ProcedureApproval.approver_id == approver_id)
             .first()
         )
-        if not existing:
+        if existing:
+            existing.decision = "pending"
+            existing.comment = None
+            existing.decided_at = None
+        else:
             db.add(ProcedureApproval(entry_id=entry.id, approver_id=approver_id, decision="pending"))
             created += 1
     return created
+
+
+def _publish_due_entries(db: Session) -> None:
+    now = _now()
+    due = (
+        db.query(ProcedureEntry)
+        .filter(ProcedureEntry.status == "approved", ProcedureEntry.published_at <= now)
+        .all()
+    )
+    for entry in due:
+        entry.status = "published"
+    if due:
+        db.commit()
 
 
 # ── Departments ──────────────────────────────────────────────────────────────
@@ -214,6 +232,7 @@ def list_procedures(
     limit: int = 50,
     actor: User | None = None,
 ) -> tuple[list[ProcedureEntry], int]:
+    _publish_due_entries(db)
     q = db.query(ProcedureEntry)
     if actor and actor.role == "patient":
         q = q.filter(ProcedureEntry.stream_target.in_(["A", "both"]))
@@ -236,6 +255,7 @@ def list_procedures(
 
 
 def get_procedure(db: Session, entry_id: uuid.UUID) -> ProcedureEntry:
+    _publish_due_entries(db)
     return _get_entry_or_404(db, entry_id)
 
 
@@ -262,7 +282,9 @@ def create_procedure(db: Session, data: schemas.ProcedureCreate, actor: User) ->
     db.add(entry)
     db.flush()
     if data.approver_ids:
-        _create_requested_approvals(db, entry, data.approver_ids)
+        created = _create_requested_approvals(db, entry, data.approver_ids)
+        if created == 0:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Select at least one staff reviewer other than yourself")
         entry.status = "pending"
     db.commit()
     db.refresh(entry)
@@ -273,16 +295,23 @@ def update_procedure(
     db: Session, entry_id: uuid.UUID, data: schemas.ProcedureUpdate, actor: User
 ) -> ProcedureEntry:
     entry = _get_entry_or_404(db, entry_id)
-    if entry.status != "draft":
+    if entry.status not in {"draft", "approved"}:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            f"Only draft procedures can be edited (current status: {entry.status})",
+            f"Only draft or waiting-approved procedures can be edited (current status: {entry.status})",
         )
     if entry.created_by != actor.id and actor.role not in ADMIN_ROLES:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or an admin may edit this procedure")
 
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(entry, field, value)
+    if entry.status == "approved":
+        db.query(ProcedureApproval).filter(ProcedureApproval.entry_id == entry.id).update(
+            {"decision": "pending", "comment": None, "decided_at": None},
+            synchronize_session=False,
+        )
+        entry.status = "pending"
+        entry.published_at = None
     entry.updated_by = actor.id
     db.commit()
     db.refresh(entry)
@@ -314,7 +343,7 @@ def submit_for_approval(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or admin may submit this procedure")
     requested = data.approver_ids if data else []
     if not requested:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Select at least one department head or admin approver")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Select at least one staff reviewer")
 
     # Snapshot current version before it enters review
     snapshot = ProcedureVersion(
@@ -333,7 +362,10 @@ def submit_for_approval(
         created_by=actor.id,
     )
     db.add(snapshot)
-    _create_requested_approvals(db, entry, requested)
+    db.query(ProcedureApproval).filter(ProcedureApproval.entry_id == entry.id).delete(synchronize_session=False)
+    created = _create_requested_approvals(db, entry, requested)
+    if created == 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Select at least one staff reviewer other than yourself")
 
     entry.status = "pending"
     entry.updated_by = actor.id
@@ -399,8 +431,8 @@ def approve_procedure(
 
     required = requested_count or REQUIRED_APPROVALS
     if approval_count >= required:
-        entry.status = "published"
-        entry.published_at = _now()
+        entry.status = "approved"
+        entry.published_at = _now() + PUBLICATION_DELAY
         entry.version += 1
         entry.updated_by = actor.id
 
@@ -445,7 +477,7 @@ def _reject_procedure(
 def archive_procedure(db: Session, entry_id: uuid.UUID, actor: User) -> ProcedureEntry:
     _require_admin(actor)
     entry = _get_entry_or_404(db, entry_id)
-    if entry.status not in {"published", "pending"}:
+    if entry.status not in {"published", "pending", "approved"}:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, f"Cannot archive a procedure with status '{entry.status}'"
         )

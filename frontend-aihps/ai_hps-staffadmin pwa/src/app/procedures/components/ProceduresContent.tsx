@@ -26,10 +26,11 @@ function mapRiskLevel(riskLevel: string): 'critical' | 'high' | 'medium' | 'low'
   return 'medium';
 }
 
-function mapStatus(status: string): 'draft' | 'pending' | 'published' | 'archived' {
+function mapStatus(status: string): 'draft' | 'pending' | 'approved' | 'published' | 'archived' {
   const s = status?.toLowerCase();
   if (s === 'draft') return 'draft';
   if (s === 'pending' || s === 'pending_approval') return 'pending';
+  if (s === 'approved') return 'approved';
   if (s === 'published') return 'published';
   if (s === 'archived') return 'archived';
   return 'draft';
@@ -60,7 +61,7 @@ interface DisplayProcedure {
   department: string;
   stream: 'staff-only' | 'patient' | 'both';
   risk: 'critical' | 'high' | 'medium' | 'low';
-  status: 'draft' | 'pending' | 'published' | 'archived';
+  status: 'draft' | 'pending' | 'approved' | 'published' | 'archived';
   version: string;
   updated: string;
   document_url: string | null;
@@ -117,7 +118,7 @@ function CreateProcedureModal({
       return;
     }
     if (approverIds.length === 0) {
-      toast.error('Select at least one department head or admin approver.');
+      toast.error('Select at least one staff reviewer.');
       return;
     }
     setLoading(true);
@@ -233,10 +234,10 @@ function CreateProcedureModal({
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Requested approvers <span className="text-clinical-red">*</span></label>
+              <label className="font-medium text-foreground" style={{ fontSize: '13px' }}>Requested reviewers <span className="text-clinical-red">*</span></label>
               <div className="border border-border rounded-sm bg-card max-h-40 overflow-y-auto">
                 {approvers.length === 0 ? (
-                  <p className="px-3 py-2 text-muted-foreground" style={{ fontSize: '13px' }}>No department heads or admins are available.</p>
+                  <p className="px-3 py-2 text-muted-foreground" style={{ fontSize: '13px' }}>No active staff reviewers are available.</p>
                 ) : (
                   approvers.map((person) => (
                     <label key={person.id} className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 cursor-pointer hover:bg-muted/60">
@@ -336,11 +337,10 @@ export default function ProceduresContent() {
   }, [allProcedures]);
 
   const approvers = useMemo(() => {
-    const allowedRoles = new Set(['super_admin', 'admin', 'department_admin', 'department_head']);
-    return (staffData?.items ?? []).filter((person: ApiUser) => allowedRoles.has(person.role) && person.is_active);
-  }, [staffData]);
+    return (staffData?.items ?? []).filter((person: ApiUser) => person.role !== 'patient' && person.id !== user?.id && person.is_active);
+  }, [staffData, user?.id]);
 
-  const statuses = ['All Status', 'Draft', 'Pending', 'Published', 'Archived'];
+  const statuses = ['All Status', 'Draft', 'Pending', 'Approved', 'Published', 'Archived'];
 
   const filtered = useMemo(() => {
     return allProcedures.filter((p) => {
