@@ -160,16 +160,12 @@ async function main() {
     sessionId: SESSION_ID,
     multiDevice: true,
     headless: true,
+    useChrome: true,
+    executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome',
     qrTimeout: 0,
     authTimeout: 0,
     restartOnCrash: start => start(),
     cacheEnabled: false,
-    chromiumArgs: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-    ],
   });
 
   clientReady = true;

@@ -198,6 +198,7 @@ services:
       WA_IGNORE_GROUPS: ${WA_IGNORE_GROUPS:-true}
     volumes:
       - whatsapp_session_data:/app/_IGNORE_${WA_SESSION_ID:-aihps-dev}
+    shm_size: "1gb"
     depends_on:
       - svc02_auth
       - svc_agents
