@@ -208,6 +208,8 @@ services:
     volumes:
       - whatsapp_session_data:/app/_IGNORE_${WA_SESSION_ID:-aihps-prod}
     shm_size: "1gb"
+    cap_add:
+      - SYS_ADMIN
     depends_on:
       - svc02_auth
       - svc_agents
