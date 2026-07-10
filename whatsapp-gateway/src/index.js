@@ -185,6 +185,11 @@ async function main() {
     authTimeout: 0,
     restartOnCrash: start => start(),
     cacheEnabled: false,
+    chromiumArgs: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+    ],
   });
 
   clientReady = true;
