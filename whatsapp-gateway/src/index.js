@@ -1,6 +1,8 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
-const { create } = require('@open-wa/wa-automate');
+const { create, ev } = require('@open-wa/wa-automate');
 
 const AUTH_API_URL = process.env.AUTH_API_URL || 'http://svc02_auth:8002';
 const PIPELINE_API_URL = process.env.PIPELINE_API_URL || 'http://svc_agents:8020';
@@ -9,9 +11,25 @@ const SESSION_ID = process.env.WA_SESSION_ID || 'aihps-prod';
 const HEALTH_PORT = Number(process.env.WHATSAPP_GATEWAY_PORT || 3030);
 const IGNORE_GROUPS = (process.env.WA_IGNORE_GROUPS || 'true').toLowerCase() !== 'false';
 const STAFF_ENABLED = (process.env.WA_ENABLE_STAFF_STREAM || 'true').toLowerCase() !== 'false';
+const QR_FILE = process.env.WA_QR_FILE || '/app/qr/whatsapp-qr.png';
 
 let clientReady = false;
 let lastError = null;
+let qrReady = false;
+
+ev.on('qr.**', qrcode => {
+  try {
+    const data = String(qrcode || '');
+    const base64 = data.replace(/^data:image\/png;base64,/, '');
+    fs.mkdirSync(path.dirname(QR_FILE), { recursive: true });
+    fs.writeFileSync(QR_FILE, Buffer.from(base64, 'base64'));
+    qrReady = true;
+    console.log(`[whatsapp-gateway] QR code updated at ${QR_FILE}`);
+  } catch (error) {
+    lastError = error.message || String(error);
+    console.error('[whatsapp-gateway] Failed to save QR code:', error);
+  }
+});
 
 function digits(value) {
   return String(value || '').replace(/\D/g, '');
@@ -145,6 +163,7 @@ function startHealthServer() {
       status: clientReady ? 'ok' : 'starting',
       service: 'whatsapp-gateway',
       session: SESSION_ID,
+      qr_ready: qrReady,
       last_error: lastError,
     }));
   });
