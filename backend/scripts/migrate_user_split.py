@@ -100,7 +100,7 @@ SELECT
     created_at, updated_at
 FROM aihps_auth.users
 WHERE role = 'patient'
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 """
 
 MIGRATE_ADMINS = """
@@ -114,7 +114,7 @@ SELECT
     created_at, updated_at
 FROM aihps_auth.users
 WHERE role IN ('super_admin', 'admin', 'department_admin')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 """
 
 MIGRATE_STAFF = """
@@ -128,7 +128,7 @@ SELECT
     created_at, updated_at
 FROM aihps_auth.users
 WHERE role NOT IN ('patient', 'super_admin', 'admin', 'department_admin')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 """
 
 # Drop FK constraints so lockout / blacklist accept IDs from any table
