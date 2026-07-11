@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str = ""
     OTP_EXPIRE_MINUTES: int = 10
 
+    # SMS / MTarget
+    MTARGET_URL: str = "https://api-public-2.mtarget.fr/messages"
+    MTARGET_USERNAME: str = ""
+    MTARGET_PASSWORD: str = ""
+    MTARGET_SERVICE_ID: str = ""
+
     # Internal service-to-service token for the WhatsApp gateway.
     WHATSAPP_INTERNAL_TOKEN: str = ""
 

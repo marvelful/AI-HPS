@@ -128,7 +128,8 @@ def register_patient_v2(db: Session, data: "PatientRegisterRequest") -> Patient:
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists.")
 
-    if not verify_otp(db, data.email, data.otp_code, "register"):
+    target = _otp_target(str(data.email), data.otp_channel, data.phone)
+    if not verify_otp(db, target, data.otp_code, "register"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification code. Please request a new one.")
 
     from datetime import date as date_type
@@ -143,7 +144,7 @@ def register_patient_v2(db: Session, data: "PatientRegisterRequest") -> Patient:
         email=data.email,
         full_name=data.full_name,
         password_hash=hash_password(data.password),
-        phone=data.phone,
+        phone=_normalize_cameroon_phone(data.phone) if data.phone else data.phone,
         date_of_birth=dob,
         is_active=True,
     )
@@ -365,12 +366,42 @@ def _generate_otp() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
-def request_otp(db: Session, email: str, purpose: str, full_name: str = "") -> None:
-    from services.svc02_auth.email_service import send_otp_email
+def _normalize_cameroon_phone(phone: str | None) -> str:
+    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("237"):
+        return digits
+    if len(digits) == 9 and digits.startswith("6"):
+        return f"237{digits}"
+    return digits
 
-    # Invalidate any existing unused OTPs for this email+purpose
+
+def _otp_target(email: str, channel: str = "email", phone: str | None = None) -> str:
+    if channel == "sms":
+        normalized_phone = _normalize_cameroon_phone(phone)
+        if not normalized_phone:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Phone number is required for SMS OTP.")
+        return f"sms:{normalized_phone}"
+    return str(email).strip().lower()
+
+
+def request_otp(
+    db: Session,
+    email: str,
+    purpose: str,
+    full_name: str = "",
+    channel: str = "email",
+    phone: str | None = None,
+) -> None:
+    from services.svc02_auth.email_service import send_otp_email
+    from services.svc02_auth.sms_service import send_otp_sms
+
+    target = _otp_target(email, channel, phone)
+
+    # Invalidate any existing unused OTPs for this target+purpose.
     db.query(OtpCode).filter(
-        OtpCode.email == email,
+        OtpCode.email == target,
         OtpCode.purpose == purpose,
         OtpCode.used == False,  # noqa: E712
     ).update({"used": True})
@@ -378,25 +409,31 @@ def request_otp(db: Session, email: str, purpose: str, full_name: str = "") -> N
 
     code = _generate_otp()
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
-    otp = OtpCode(email=email, code=code, purpose=purpose, expires_at=expires_at)
+    otp = OtpCode(email=target, code=code, purpose=purpose, expires_at=expires_at)
     db.add(otp)
     db.commit()
 
     try:
-        send_otp_email(to_email=email, otp_code=code, full_name=full_name)
+        if channel == "sms":
+            send_otp_sms(phone or "", code)
+        else:
+            send_otp_email(to_email=email, otp_code=code, full_name=full_name)
     except Exception as exc:
+        otp.used = True
+        db.commit()
+        delivery = "SMS" if channel == "sms" else "email"
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to send OTP email. Please try again. ({exc})",
+            detail=f"Failed to send OTP by {delivery}. Please try again. ({exc})",
         )
 
 
-def verify_otp(db: Session, email: str, code: str, purpose: str) -> bool:
+def verify_otp(db: Session, target: str, code: str, purpose: str) -> bool:
     now = datetime.now(timezone.utc)
     otp: Optional[OtpCode] = (
         db.query(OtpCode)
         .filter(
-            OtpCode.email == email,
+            OtpCode.email == target,
             OtpCode.code == code,
             OtpCode.purpose == purpose,
             OtpCode.used == False,  # noqa: E712
@@ -420,7 +457,8 @@ def register_patient(db: Session, data: PatientRegisterRequest) -> User:
             detail="An account with this email already exists.",
         )
 
-    if not verify_otp(db, data.email, data.otp_code, "register"):
+    target = _otp_target(str(data.email), data.otp_channel, data.phone)
+    if not verify_otp(db, target, data.otp_code, "register"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired verification code. Please request a new one.",
@@ -438,7 +476,7 @@ def register_patient(db: Session, data: PatientRegisterRequest) -> User:
         full_name=data.full_name,
         password_hash=hash_password(data.password),
         role="patient",
-        phone=data.phone,
+        phone=_normalize_cameroon_phone(data.phone) if data.phone else data.phone,
         date_of_birth=dob,
         is_active=True,
     )

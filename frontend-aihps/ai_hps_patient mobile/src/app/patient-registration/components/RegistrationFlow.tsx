@@ -12,6 +12,7 @@ export interface RegistrationData {
   dob: string;
   password: string;
   language: 'fr' | 'en';
+  otpChannel: 'email' | 'sms';
 }
 
 export default function RegistrationFlow() {
@@ -78,7 +79,7 @@ export default function RegistrationFlow() {
             >
               2
             </div>
-            <span className="text-white text-xs font-medium">Verify Email</span>
+            <span className="text-white text-xs font-medium">Verify Account</span>
           </div>
         </div>
       </div>

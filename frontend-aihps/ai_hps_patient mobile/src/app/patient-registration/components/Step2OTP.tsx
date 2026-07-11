@@ -64,6 +64,7 @@ export default function Step2OTP({ formData, onBack }: Props) {
         date_of_birth: formData.dob || undefined,
         password: formData.password,
         otp_code: code,
+        otp_channel: formData.otpChannel,
       });
       login({
         id: data.user.id,
@@ -87,7 +88,13 @@ export default function Step2OTP({ formData, onBack }: Props) {
   const handleResend = async () => {
     if (cooldown > 0) return;
     try {
-      await authApi.requestOtp({ email: formData.email, purpose: 'register', full_name: formData.fullName });
+      await authApi.requestOtp({
+        email: formData.email,
+        purpose: 'register',
+        full_name: formData.fullName,
+        channel: formData.otpChannel,
+        phone: formData.phone || undefined,
+      });
       setCooldown(60);
     } catch {
       setCooldown(60);
@@ -120,11 +127,13 @@ export default function Step2OTP({ formData, onBack }: Props) {
         Back
       </button>
 
-      <h2 className="text-[17px] font-bold mb-1" style={{ color: '#1A2433' }}>Verify Your Email</h2>
+      <h2 className="text-[17px] font-bold mb-1" style={{ color: '#1A2433' }}>Verify Your Account</h2>
       <p className="text-sm mb-1" style={{ color: '#4A5568' }}>
         Enter the 6-digit code sent to
       </p>
-      <p className="text-sm font-bold mb-6" style={{ color: 'var(--primary)' }}>{formData.email}</p>
+      <p className="text-sm font-bold mb-6" style={{ color: 'var(--primary)' }}>
+        {formData.otpChannel === 'sms' ? `+237 ${formData.phone}` : formData.email}
+      </p>
 
       {/* OTP Boxes */}
       <div className="flex gap-2 justify-center mb-5" onPaste={handlePaste}>

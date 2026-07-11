@@ -19,6 +19,10 @@ const i18n = {
     phoneLabel: 'Numéro de téléphone',
     phoneHint: 'Optionnel — pour les rappels de rendez-vous',
     phoneOptional: '(optionnel)',
+    otpChannelLabel: 'Recevoir le code par',
+    otpEmail: 'Email',
+    otpSms: 'SMS',
+    smsPhoneRequired: 'Le numero de telephone est requis pour recevoir le code par SMS',
     dobLabel: 'Date de naissance',
     dobOptional: '(optionnel)',
     pwLabel: 'Mot de passe',
@@ -51,6 +55,10 @@ const i18n = {
     phoneLabel: 'Phone Number',
     phoneHint: 'Optional — for appointment reminders',
     phoneOptional: '(optional)',
+    otpChannelLabel: 'Receive code by',
+    otpEmail: 'Email',
+    otpSms: 'SMS',
+    smsPhoneRequired: 'Phone number is required to receive the code by SMS',
     dobLabel: 'Date of Birth',
     dobOptional: '(optional)',
     pwLabel: 'Password',
@@ -97,6 +105,7 @@ export default function Step1Form({ onNext }: { onNext: (data: RegistrationData)
   const schema = z.object({
     fullName: z.string().min(3, t.errors.nameRequired),
     email: z.string().email(t.errors.emailInvalid),
+    otpChannel: z.enum(['email', 'sms']),
     phone: z.string().min(9, t.errors.phoneTooShort).max(12, t.errors.phoneTooLong).optional().or(z.literal('')),
     dob: z.string().optional(),
     password: z.string().min(8, t.errors.pwMin),
@@ -104,6 +113,9 @@ export default function Step1Form({ onNext }: { onNext: (data: RegistrationData)
   }).refine((d) => d.password === d.confirmPassword, {
     message: t.errors.pwNoMatch,
     path: ['confirmPassword'],
+  }).refine((d) => d.otpChannel !== 'sms' || Boolean(d.phone?.trim()), {
+    message: t.smsPhoneRequired,
+    path: ['phone'],
   });
 
   type FormData = z.infer<typeof schema>;
@@ -114,11 +126,13 @@ export default function Step1Form({ onNext }: { onNext: (data: RegistrationData)
   const [pwValue, setPwValue] = useState('');
   const [serverError, setServerError] = useState('');
 
-  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { otpChannel: 'email' },
   });
 
   const watchedPw = watch('password', '');
+  const watchedOtpChannel = watch('otpChannel', 'email');
   const strength = getStrength(watchedPw || pwValue, t);
 
   const handleLangChange = (newLang: 'fr' | 'en') => {
@@ -130,7 +144,13 @@ export default function Step1Form({ onNext }: { onNext: (data: RegistrationData)
     setServerError('');
     setIsLoading(true);
     try {
-      await authApi.requestOtp({ email: data.email, purpose: 'register', full_name: data.fullName });
+      await authApi.requestOtp({
+        email: data.email,
+        purpose: 'register',
+        full_name: data.fullName,
+        channel: data.otpChannel,
+        phone: data.phone || undefined,
+      });
       onNext({
         email: data.email,
         fullName: data.fullName,
@@ -138,6 +158,7 @@ export default function Step1Form({ onNext }: { onNext: (data: RegistrationData)
         dob: data.dob || '',
         password: data.password,
         language: lang,
+        otpChannel: data.otpChannel,
       });
     } catch (err: any) {
       setServerError(err.response?.data?.detail || t.serverError);
@@ -201,8 +222,33 @@ export default function Step1Form({ onNext }: { onNext: (data: RegistrationData)
         </div>
 
         <div>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#1A2433' }}>
+            {t.otpChannelLabel}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['email', 'sms'] as const).map((channel) => (
+              <label
+                key={channel}
+                className="flex items-center justify-center rounded-xl border-2 px-3 py-3 text-sm font-bold transition-all"
+                style={{
+                  borderColor: watchedOtpChannel === channel ? 'var(--primary)' : 'var(--border)',
+                  background: watchedOtpChannel === channel ? 'var(--primary-light)' : '#fff',
+                  color: watchedOtpChannel === channel ? 'var(--primary)' : 'var(--muted-foreground)',
+                }}
+              >
+                <input type="radio" value={channel} className="sr-only" {...register('otpChannel')} />
+                {channel === 'email' ? t.otpEmail : t.otpSms}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <label className="block text-sm font-semibold mb-1.5" style={{ color: '#1A2433' }} htmlFor="su-phone">
-            {t.phoneLabel} <span className="text-xs font-normal" style={{ color: '#94A3B8' }}>{t.phoneOptional}</span>
+            {t.phoneLabel}{' '}
+            <span className="text-xs font-normal" style={{ color: watchedOtpChannel === 'sms' ? 'var(--critical)' : '#94A3B8' }}>
+              {watchedOtpChannel === 'sms' ? '*' : t.phoneOptional}
+            </span>
           </label>
           <div className="flex gap-2">
             <div

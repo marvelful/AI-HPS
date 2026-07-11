@@ -50,6 +50,15 @@ def _whatsapp_identity_response(account, account_type: str, stream: str) -> sche
     )
 
 
+def _legacy_user_whatsapp_identity(account: User) -> schemas.WhatsAppIdentityResponse:
+    role = getattr(account, "role", "staff")
+    if role == "patient":
+        return _whatsapp_identity_response(account, "patient", "A")
+    if role in service.ADMIN_ROLES:
+        return _whatsapp_identity_response(account, "admin", "B")
+    return _whatsapp_identity_response(account, "staff", "B")
+
+
 def _audit_auth_event(event_type: str, user_id: str | None, email: str, user_type: str | None = None) -> None:
     publish_audit(
         event_type,
@@ -76,14 +85,15 @@ def get_whatsapp_identity(
     for model, account_type, stream in (
         (Admin, "admin", "B"),
         (Staff, "staff", "B"),
-        (User, "staff", "B"),
         (Patient, "patient", "A"),
     ):
         for account in db.query(model).filter(model.is_active == True).all():  # noqa: E712
-            if getattr(account, "role", None) == "patient" and stream == "B":
-                continue
             if _phone_matches(getattr(account, "phone", None), phone):
                 return _whatsapp_identity_response(account, account_type, stream)
+
+    for account in db.query(User).filter(User.is_active == True).all():  # noqa: E712
+        if _phone_matches(getattr(account, "phone", None), phone):
+            return _legacy_user_whatsapp_identity(account)
 
     return schemas.WhatsAppIdentityResponse(matched=False)
 
@@ -175,10 +185,11 @@ def admin_login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/request-otp", status_code=202)
 def request_otp(body: schemas.RequestOtpRequest, db: Session = Depends(get_db)):
-    """Send a 6-digit OTP to the given email. Used before patient self-registration."""
-    service.request_otp(db, str(body.email), body.purpose, body.full_name or "")
+    """Send a 6-digit OTP before patient self-registration."""
+    service.request_otp(db, str(body.email), body.purpose, body.full_name or "", body.channel, body.phone)
     _audit_auth_event("auth.otp_requested", None, str(body.email), "patients")
-    return {"message": "Verification code sent. Please check your email."}
+    delivery = "SMS" if body.channel == "sms" else "email"
+    return {"message": f"Verification code sent by {delivery}."}
 
 
 @router.post("/register", response_model=schemas.TokenResponse, status_code=201)

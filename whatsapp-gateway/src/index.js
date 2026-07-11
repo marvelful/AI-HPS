@@ -1,7 +1,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const axios = require('axios');
 
 const AUTH_API_URL = process.env.AUTH_API_URL || 'http://svc02_auth:8002';
@@ -24,7 +23,6 @@ const MTARGET_USERNAME = process.env.MTARGET_USERNAME || '';
 const MTARGET_PASSWORD = process.env.MTARGET_PASSWORD || '';
 const MTARGET_SERVICE_ID = process.env.MTARGET_SERVICE_ID || '';
 
-const VERIFY_TTL_MS = Number(process.env.WA_STAFF_VERIFY_TTL_MS || 10 * 60 * 1000);
 const MAX_REPLY_LENGTH = Number(process.env.WA_MAX_REPLY_LENGTH || 3800);
 const MAX_SMS_REPLY_LENGTH = Number(process.env.SMS_MAX_REPLY_LENGTH || 480);
 
@@ -38,7 +36,7 @@ function loadState() {
   try {
     return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
   } catch {
-    return { contacts: {}, staffAuth: {} };
+    return { contacts: {} };
   }
 }
 
@@ -65,14 +63,6 @@ function safeJson(value) {
   } catch {
     return String(value);
   }
-}
-
-function codeHash(code) {
-  return crypto.createHash('sha256').update(String(code)).digest('hex');
-}
-
-function newCode() {
-  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 }
 
 function sessionKeyFor(phone, stream) {
@@ -281,55 +271,6 @@ function smsReplyText(text) {
   return `${normalized.slice(0, Math.max(0, MAX_SMS_REPLY_LENGTH - 34)).trim()}... Reply with a shorter question.`;
 }
 
-async function ensureStaffVerified(identity, chatId, text) {
-  if (identity.stream !== 'B') return true;
-
-  const phone = identity.phone;
-  const now = Date.now();
-  const record = state.staffAuth[phone];
-  if (record?.verified) return true;
-
-  if (/^\d{6}$/.test(text) && record?.codeHash && record.expiresAt > now) {
-    if (record.codeHash === codeHash(text)) {
-      state.staffAuth[phone] = {
-        verified: true,
-        verifiedAt: new Date().toISOString(),
-        userId: identity.user_id,
-      };
-      saveState();
-      await sendWhatsApp(chatId, 'Staff verification successful. You can now ask staff procedure questions here.');
-      return true;
-    }
-    await sendWhatsApp(chatId, 'That verification code is not correct. Reply RESEND to receive a new code.');
-    return false;
-  }
-
-  const shouldSend = !record || record.expiresAt <= now || /^resend$/i.test(text);
-  if (shouldSend) {
-    const code = newCode();
-    state.staffAuth[phone] = {
-      verified: false,
-      codeHash: codeHash(code),
-      expiresAt: now + VERIFY_TTL_MS,
-      userId: identity.user_id,
-      sentAt: new Date().toISOString(),
-    };
-    saveState();
-    await sendSms(phone, `AI-HPS staff verification code: ${code}. It expires in 10 minutes.`);
-    console.log('[whatsapp-gateway] Staff verification SMS requested', {
-      phone,
-      userId: identity.user_id,
-      expiresAt: state.staffAuth[phone].expiresAt,
-    });
-  }
-
-  await sendWhatsApp(
-    chatId,
-    'For staff access, I sent a 6-digit verification code by SMS to your registered phone number. Reply here with that code. Reply RESEND if it expires.'
-  );
-  return false;
-}
-
 function answerText(output) {
   if (!output) return 'No answer was generated. Please try again.';
   if (typeof output === 'string') return output;
@@ -447,11 +388,6 @@ async function handleIncoming(payload) {
     accountType: identity.account_type,
   };
   saveState();
-
-  if (identity.stream === 'B') {
-    const ok = await ensureStaffVerified(identity, message.chatId, message.text);
-    if (!ok) return { ok: true, action: 'verification_required' };
-  }
 
   if (!contact.welcomed || isGreeting(message.text)) {
     state.contacts[phone].welcomed = true;

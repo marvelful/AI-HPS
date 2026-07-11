@@ -7,8 +7,9 @@ export interface PatientUser {
   language?: string;
 }
 export interface TokenResponse { access_token: string; token_type: string; expires_in: number; user: PatientUser; }
-export interface RegisterPayload { full_name: string; email: string; phone?: string; date_of_birth?: string; password: string; otp_code: string; }
-export interface RequestOtpPayload { email: string; purpose: 'register' | 'reset_password'; full_name?: string; }
+export type OtpChannel = 'email' | 'sms'
+export interface RegisterPayload { full_name: string; email: string; phone?: string; date_of_birth?: string; password: string; otp_code: string; otp_channel?: OtpChannel; }
+export interface RequestOtpPayload { email: string; purpose: 'register' | 'reset_password'; full_name?: string; channel?: OtpChannel; phone?: string; }
 export interface Department { id: string; name: string; informal_names: string[]; services: any[]; operating_hours: Record<string, any>; location: string | null; contact_details: Record<string, any>; is_active: boolean; created_at: string; updated_at: string; }
 export interface Procedure { id: string; title: string; summary: string | null; content: string; steps: Record<string, any>[]; stream_target: string; applicable_roles: string[]; risk_level: string; status: string; department_id: string | null; language: string; version: number; document_url: string | null; published_at: string | null; created_at: string; updated_at: string; }
 export interface ProcedureList { items: Procedure[]; total: number; skip: number; limit: number; }

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, date
 from typing import Literal, Optional
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 VALID_ROLES = {
     "super_admin", "admin", "department_admin", "department_head",
@@ -69,6 +69,7 @@ class PatientRegisterRequest(BaseModel):
     full_name: str
     password: str
     otp_code: str
+    otp_channel: Literal["email", "sms"] = "email"
     phone: Optional[str] = None
     date_of_birth: Optional[str] = None  # accepts "YYYY-MM-DD"
 
@@ -86,11 +87,25 @@ class PatientRegisterRequest(BaseModel):
             raise ValueError("OTP must be a 6-digit number")
         return v.strip()
 
+    @model_validator(mode="after")
+    def validate_sms_phone(self):
+        if self.otp_channel == "sms" and not (self.phone or "").strip():
+            raise ValueError("Phone number is required for SMS OTP")
+        return self
+
 
 class RequestOtpRequest(BaseModel):
     email: EmailStr
     purpose: Literal["register", "reset_password"] = "register"
     full_name: Optional[str] = None
+    channel: Literal["email", "sms"] = "email"
+    phone: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_sms_phone(self):
+        if self.channel == "sms" and not (self.phone or "").strip():
+            raise ValueError("Phone number is required for SMS OTP")
+        return self
 
 
 class VerifyOtpRequest(BaseModel):

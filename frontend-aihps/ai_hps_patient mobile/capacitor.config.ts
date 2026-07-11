@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.aihps.patient',
   appName: 'AI-HPS Patient',
   webDir: 'out',
-  bundledWebRuntime: false,
   server: {
     androidScheme: 'https',
   },
