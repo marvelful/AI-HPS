@@ -34,6 +34,16 @@
 		reverse_proxy whatsapp-gateway:3030
 	}
 
+	handle_path /api/sms/mo* {
+		rewrite * /webhooks/mtarget/mo{uri}
+		reverse_proxy whatsapp-gateway:3030
+	}
+
+	handle_path /api/sms/dlr* {
+		rewrite * /webhooks/mtarget/dlr{uri}
+		reverse_proxy whatsapp-gateway:3030
+	}
+
 	handle {
 		reverse_proxy staffadmin:3002
 	}

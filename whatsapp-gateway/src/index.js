@@ -15,6 +15,7 @@ const PORT = Number(process.env.WHATSAPP_GATEWAY_PORT || 3030);
 const STAFF_ENABLED = (process.env.WA_ENABLE_STAFF_STREAM || 'true').toLowerCase() !== 'false';
 const IGNORE_GROUPS = (process.env.WA_IGNORE_GROUPS || 'true').toLowerCase() !== 'false';
 const WEBHOOK_SECRET = process.env.WA_WEBHOOK_SECRET || '';
+const SMS_WEBHOOK_SECRET = process.env.SMS_WEBHOOK_SECRET || WEBHOOK_SECRET;
 const DATA_DIR = process.env.WA_DATA_DIR || '/app/data';
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 
@@ -25,6 +26,7 @@ const MTARGET_SERVICE_ID = process.env.MTARGET_SERVICE_ID || '';
 
 const VERIFY_TTL_MS = Number(process.env.WA_STAFF_VERIFY_TTL_MS || 10 * 60 * 1000);
 const MAX_REPLY_LENGTH = Number(process.env.WA_MAX_REPLY_LENGTH || 3800);
+const MAX_SMS_REPLY_LENGTH = Number(process.env.SMS_MAX_REPLY_LENGTH || 480);
 
 let lastError = null;
 let lastMessageAt = null;
@@ -75,6 +77,10 @@ function newCode() {
 
 function sessionKeyFor(phone, stream) {
   return `whatsapp:${stream}:${phone}`;
+}
+
+function smsSessionKeyFor(phone, stream) {
+  return `sms:${stream}:${phone}`;
 }
 
 function openwaHeaders() {
@@ -260,6 +266,21 @@ async function sendSms(phone, message) {
   return response.data;
 }
 
+function smsWelcomeText(identity) {
+  if (identity.stream === 'B') {
+    return 'AI-HPS staff SMS mode. Ask a hospital procedure question. Example: What is the hand hygiene procedure?';
+  }
+  return 'AI-HPS SMS mode. Ask a hospital procedure or visitor question. Example: How should I clean my hands?';
+}
+
+function smsReplyText(text) {
+  const normalized = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (normalized.length <= MAX_SMS_REPLY_LENGTH) return normalized;
+  return `${normalized.slice(0, Math.max(0, MAX_SMS_REPLY_LENGTH - 34)).trim()}... Reply with a shorter question.`;
+}
+
 async function ensureStaffVerified(identity, chatId, text) {
   if (identity.stream !== 'B') return true;
 
@@ -319,20 +340,82 @@ function answerText(output) {
 }
 
 async function askPipeline(text, identity) {
+  return askPipelineForPlatform(text, identity, 'whatsapp', sessionKeyFor(identity.phone, identity.stream));
+}
+
+async function askPipelineForPlatform(text, identity, platform, sessionId) {
   const payload = {
     raw_query: text,
-    platform: 'whatsapp',
+    platform,
     stream: identity.stream,
     user_id: identity.user_id || null,
     user_role: identity.role,
-    session_id: sessionKeyFor(identity.phone, identity.stream),
+    session_id: sessionId,
     chatbot_mode: true,
+    output_type: platform === 'sms' ? 'sms' : undefined,
   };
 
   const response = await axios.post(`${PIPELINE_API_URL}/pipeline/query`, payload, {
     timeout: 120000,
   });
   return answerText(response.data.output);
+}
+
+function pickFirst(...values) {
+  return values.find(value => value !== undefined && value !== null && String(value).trim() !== '');
+}
+
+function extractSmsMo(payload) {
+  const msisdn = pickFirst(payload.Msisdn, payload.msisdn, payload.MSISDN, payload.From, payload.from, payload.sender);
+  const content = pickFirst(payload.Content, payload.content, payload.Text, payload.text, payload.Body, payload.body, payload.msg);
+  const id = pickFirst(payload.MsgId, payload.msgId, payload.messageId, payload.id, `${msisdn}:${content}:${Date.now()}`);
+  const status = pickFirst(payload.Status, payload.status);
+  const statusText = pickFirst(payload.StatusText, payload.statusText);
+  return {
+    id: String(id),
+    phone: normalizeCameroonPhone(msisdn),
+    text: String(content || '').trim(),
+    status: String(status || ''),
+    statusText: String(statusText || ''),
+    raw: payload,
+  };
+}
+
+async function handleIncomingSms(payload) {
+  const sms = extractSmsMo(payload);
+  console.log('[whatsapp-gateway] Incoming SMS MO', {
+    id: sms.id,
+    phone: sms.phone,
+    hasText: Boolean(sms.text),
+    status: sms.status,
+    statusText: sms.statusText,
+  });
+
+  if (!sms.phone) return { ignored: 'no_phone' };
+  if (!sms.text) return { ignored: 'empty' };
+  if (processed.has(`sms:${sms.id}`)) return { ignored: 'duplicate' };
+  processed.add(`sms:${sms.id}`);
+  if (processed.size > 500) processed = new Set(Array.from(processed).slice(-250));
+
+  const identity = await resolveIdentity(sms.phone);
+  const contact = state.contacts[sms.phone] || {};
+  state.contacts[sms.phone] = {
+    ...contact,
+    lastSeenAt: new Date().toISOString(),
+    stream: identity.stream,
+    accountType: identity.account_type,
+    lastSmsAt: new Date().toISOString(),
+  };
+  saveState();
+
+  if (isGreeting(sms.text)) {
+    await sendSms(sms.phone, smsWelcomeText(identity));
+    return { ok: true, action: 'sms_welcome', stream: identity.stream };
+  }
+
+  const answer = await askPipelineForPlatform(sms.text, identity, 'sms', smsSessionKeyFor(identity.phone, identity.stream));
+  await sendSms(sms.phone, smsReplyText(answer));
+  return { ok: true, action: 'sms_answered', stream: identity.stream };
 }
 
 async function handleIncoming(payload) {
@@ -407,6 +490,37 @@ function parseJsonBody(req) {
   });
 }
 
+function parseRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 1024 * 1024) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      if (!body) return resolve({});
+      const contentType = String(req.headers['content-type'] || '').toLowerCase();
+      try {
+        if (contentType.includes('application/json')) {
+          resolve(JSON.parse(body));
+          return;
+        }
+        if (contentType.includes('application/x-www-form-urlencoded')) {
+          resolve(Object.fromEntries(new URLSearchParams(body)));
+          return;
+        }
+        resolve(Object.fromEntries(new URLSearchParams(body)));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 function writeJson(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(data));
@@ -415,6 +529,12 @@ function writeJson(res, status, data) {
 function authorize(req) {
   if (!WEBHOOK_SECRET) return true;
   return req.headers['x-aihps-webhook-secret'] === WEBHOOK_SECRET;
+}
+
+function authorizeSms(req) {
+  if (!SMS_WEBHOOK_SECRET) return true;
+  const url = new URL(req.url, 'http://localhost');
+  return req.headers['x-aihps-webhook-secret'] === SMS_WEBHOOK_SECRET || url.searchParams.get('token') === SMS_WEBHOOK_SECRET;
 }
 
 function startServer() {
@@ -429,6 +549,26 @@ function startServer() {
           last_message_at: lastMessageAt,
           last_error: lastError,
         });
+        return;
+      }
+
+      if (req.method === 'POST' && req.url.startsWith('/webhooks/mtarget/mo')) {
+        if (!authorizeSms(req)) {
+          writeJson(res, 401, { error: 'unauthorized' });
+          return;
+        }
+
+        const payload = await parseRequestBody(req);
+        lastMessageAt = new Date().toISOString();
+        const result = await handleIncomingSms(payload);
+        writeJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === 'POST' && req.url.startsWith('/webhooks/mtarget/dlr')) {
+        const payload = await parseRequestBody(req);
+        console.log('[whatsapp-gateway] MTarget DLR', payload);
+        writeJson(res, 200, { ok: true });
         return;
       }
 
