@@ -66,7 +66,7 @@ def _normalize(text: str) -> str:
 def _reverse_instruction(start: str, end: str, landmarks: dict[str, dict[str, Any]]) -> str:
     start_name = landmarks[start]["name"]
     end_name = landmarks[end]["name"]
-    return f"Go back along the same corridor from {end_name} toward {start_name}."
+    return f"Follow the corridor from {end_name} back toward {start_name}."
 
 
 def _find_landmark_matches(query: str) -> list[tuple[int, str]]:
@@ -142,35 +142,22 @@ def _format_answer(origin: str, destination: str, path: list[tuple[str, str, str
     landmarks = data["_landmark_by_id"]
     origin_name = landmarks[origin]["name"]
     dest_name = landmarks[destination]["name"]
-    minutes = max(2, len(path) * 2)
     steps = [{"instruction": instruction} for _, _, instruction in path]
 
     if language == "FR":
-        answer = (
-            f"Depuis {origin_name}, suivez cet itineraire simule vers {dest_name}. "
-            f"Temps estime: environ {minutes} minutes. "
-            "Cette orientation utilise la carte de demonstration AI-HPS, pas un plan officiel de l'hopital."
-        )
-        disclaimer = "Itineraire simule pour la demonstration; confirmez avec l'accueil si necessaire."
+        answer = f"Navigation vers {dest_name}. Suivez ces indications depuis {origin_name}."
     else:
-        answer = (
-            f"From {origin_name}, follow this simulated route to {dest_name}. "
-            f"Estimated walking time: about {minutes} minutes. "
-            "This uses the AI-HPS demonstration map, not an official hospital floor plan."
-        )
-        disclaimer = "Simulated route for demonstration; confirm at Reception if needed."
+        answer = f"Navigation to {dest_name}. Follow these directions from {origin_name}."
 
     return {
+        "response_type": "navigation",
         "answer": answer,
         "steps": steps,
         "key_steps": steps,
-        "risk_level": "low",
         "source": f"{data['name']} ({data['version']}) - {data['map_url']}",
-        "disclaimer": disclaimer,
         "map_url": data["map_url"],
         "origin": origin_name,
         "destination": dest_name,
-        "estimated_time_minutes": minutes,
     }
 
 

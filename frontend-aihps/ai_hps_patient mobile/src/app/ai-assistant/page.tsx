@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import MobileShell from '@/components/MobileShell';
 import AIAssistantScreen from './components/AIAssistantScreen';
 
 export default function AIAssistantPage() {
   return (
     <MobileShell>
-      <AIAssistantScreen />
+      <Suspense fallback={null}>
+        <AIAssistantScreen />
+      </Suspense>
     </MobileShell>
   );
 }

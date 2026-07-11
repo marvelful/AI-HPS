@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, ArrowLeft, Phone, Mic, MicOff, PanelLeft, Plus, Clock, MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { pipelineApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
@@ -144,13 +145,14 @@ function AIProcedureBubble({ msg, lang }: { msg: Message; lang: 'fr' | 'en' }) {
 
 function AINavigationBubble({ msg, lang }: { msg: Message; lang: 'fr' | 'en' }) {
   const raw = msg.navigation ?? msg.content;
-  const dept: string = raw?.dept || raw?.to || raw?.department || (lang === 'en' ? 'Department' : 'Département');
-  const floor: string = raw?.floor || raw?.location || '';
-  const time: string = raw?.time || (raw?.estimated_time_minutes ? `${raw.estimated_time_minutes} min` : '');
-  const directions: string[] = (raw?.directions || []).map((d: any) =>
+  const dept: string = raw?.destination || raw?.dept || raw?.to || raw?.department || (lang === 'en' ? 'Department' : 'Département');
+  const origin: string = raw?.origin || raw?.from || '';
+  const directions: string[] = (raw?.directions || raw?.steps || raw?.key_steps || []).map((d: any) =>
     typeof d === 'string' ? d : (d.instruction || d.text || JSON.stringify(d))
   );
+  const heading = 'Navigation';
   const mapLabel = lang === 'en' ? 'View full map' : 'Voir le plan complet';
+  const mapHref = raw?.map_url || '/docs/mock-hospital-navigation-map.svg';
 
   return (
     <div className="flex items-end gap-2 message-fade-in">
@@ -161,10 +163,12 @@ function AINavigationBubble({ msg, lang }: { msg: Message; lang: 'fr' | 'en' }) 
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base">📍</span>
           <div>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--accent)' }}>{heading}</p>
             <p className="text-sm font-bold text-foreground">{dept}</p>
-            <p className="text-xs text-muted-foreground">{floor}{floor && time ? ' · ' : ''}{time}</p>
+            {origin ? <p className="text-xs text-muted-foreground">{origin}</p> : null}
           </div>
         </div>
+        {raw?.answer ? <p className="text-xs text-foreground leading-relaxed mb-3">{raw.answer}</p> : null}
         <div className="space-y-2">
           {directions.map((dir, i) => (
             <div key={`dir-${i}`} className="flex items-start gap-2">
@@ -176,7 +180,7 @@ function AINavigationBubble({ msg, lang }: { msg: Message; lang: 'fr' | 'en' }) 
           ))}
         </div>
         <Link
-          href="/departments"
+          href={mapHref}
           className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95"
           style={{ background: 'var(--secondary-light)', color: 'var(--secondary)' }}
         >
@@ -301,6 +305,7 @@ function HistorySidebar({
 }
 
 export default function AIAssistantScreen() {
+  const searchParams = useSearchParams();
   const { patient } = useAuthStore();
   const lang: 'fr' | 'en' = patient?.language ?? 'fr';
   const storageKey = sessionStorageKey(patient?.id || patient?.email);
@@ -315,12 +320,27 @@ export default function AIAssistantScreen() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recRef = useRef<any>(null);
+  const lastPromptRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSessions(loadSessions(storageKey));
     setActiveSessionId('sess_' + Date.now());
     setMessages([]);
   }, [storageKey]);
+
+  useEffect(() => {
+    const prompt = searchParams.get('prompt')?.trim();
+    if (!prompt || lastPromptRef.current === prompt) return;
+    lastPromptRef.current = prompt;
+    setInput(prompt);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+      el.focus();
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -509,10 +529,14 @@ export default function AIAssistantScreen() {
         aiMsg = { id: `msg-ai-${Date.now()}`, type: 'ai-text', content: errTxt, timestamp: nowTime() };
       } else if (data.is_emergency) {
         aiMsg = { id: `msg-ai-${Date.now()}`, type: 'ai-emergency', content: outputPayload?.answer, timestamp: nowTime() };
+      } else if (
+        outputPayload?.response_type === 'navigation' ||
+        (outputPayload?.map_url && outputPayload?.origin && outputPayload?.destination) ||
+        (outputPayload?.from && outputPayload?.directions)
+      ) {
+        aiMsg = { id: `msg-ai-${Date.now()}`, type: 'ai-navigation', content: outputPayload, timestamp: nowTime() };
       } else if (data.output_type === 'json' && outputPayload?.steps?.length > 0) {
         aiMsg = { id: `msg-ai-${Date.now()}`, type: 'ai-procedure', content: outputPayload, timestamp: nowTime() };
-      } else if (outputPayload?.from && outputPayload?.directions) {
-        aiMsg = { id: `msg-ai-${Date.now()}`, type: 'ai-navigation', content: outputPayload, timestamp: nowTime() };
       } else {
         const txt = typeof outputPayload === 'string' ? outputPayload
           : (outputPayload?.answer || outputPayload?.text || null);

@@ -112,6 +112,7 @@ def _to_ussd(data: dict, language: str) -> list[dict]:
 
 def _to_json(data: dict) -> dict:
     return {
+        "response_type":    data.get("response_type"),
         "disclaimer":       data.get("disclaimer"),
         "answer":           data.get("answer"),
         "key_steps":        data.get("key_steps") or [],
@@ -123,7 +124,6 @@ def _to_json(data: dict) -> dict:
         "map_url":          data.get("map_url"),
         "origin":           data.get("origin"),
         "destination":      data.get("destination"),
-        "estimated_time_minutes": data.get("estimated_time_minutes"),
     }
 
 

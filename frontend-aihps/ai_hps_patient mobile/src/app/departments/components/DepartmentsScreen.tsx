@@ -198,6 +198,7 @@ export default function DepartmentsScreen() {
               const floor = dept.location || '';
               const hours = formatHours(dept.operating_hours);
               const isOpen = dept.is_active;
+              const guidePrompt = `I am at the main entrance. Guide me to ${dept.name}.`;
 
               return (
                 <div key={dept?.id} className="card-base p-4">
@@ -237,7 +238,7 @@ export default function DepartmentsScreen() {
                       </div>
 
                       <Link
-                        href="/ai-assistant"
+                        href={`/ai-assistant?prompt=${encodeURIComponent(guidePrompt)}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95"
                         style={{ background: 'var(--secondary-light)', color: 'var(--secondary)' }}
                       >

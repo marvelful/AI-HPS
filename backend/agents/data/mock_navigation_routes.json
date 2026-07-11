@@ -188,7 +188,7 @@
     }
   ],
   "corridors": [
-    {"from": "main_entrance", "to": "dermatology", "instruction": "Move forward from the main entrance and keep Dermatology on your right."},
+    {"from": "main_entrance", "to": "dermatology", "instruction": "Move forward from the main entrance and pass the Dermatology building."},
     {"from": "dermatology", "to": "valley_walk", "instruction": "Continue down the sloped valley walkway."},
     {"from": "valley_walk", "to": "main_gate", "instruction": "Follow the walkway until you reach the main gate junction."},
     {"from": "main_gate", "to": "reception", "instruction": "Go straight from the main gate junction to Reception."},
