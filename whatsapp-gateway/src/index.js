@@ -227,16 +227,22 @@ async function sendSms(phone, message) {
     throw new Error('MTarget SMS is not configured');
   }
 
+  const normalizedPhone = normalizeCameroonPhone(phone);
   const form = new URLSearchParams();
   form.set('username', MTARGET_USERNAME);
   form.set('password', MTARGET_PASSWORD);
-  form.set('msisdn', `+${normalizeCameroonPhone(phone)}`);
+  form.set('msisdn', `+${normalizedPhone}`);
   form.set('msg', message);
   if (MTARGET_SERVICE_ID) form.set('serviceid', MTARGET_SERVICE_ID);
 
   const response = await axios.post(MTARGET_URL, form.toString(), {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     timeout: 45000,
+  });
+  console.log('[whatsapp-gateway] SMS provider response', {
+    phone: normalizedPhone,
+    status: response.status,
+    data: response.data,
   });
   return response.data;
 }
@@ -276,6 +282,11 @@ async function ensureStaffVerified(identity, chatId, text) {
     };
     saveState();
     await sendSms(phone, `AI-HPS staff verification code: ${code}. It expires in 10 minutes.`);
+    console.log('[whatsapp-gateway] Staff verification SMS requested', {
+      phone,
+      userId: identity.user_id,
+      expiresAt: state.staffAuth[phone].expiresAt,
+    });
   }
 
   await sendWhatsApp(
