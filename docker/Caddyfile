@@ -6,6 +6,11 @@
 		file_server
 	}
 
+	handle_path /docs/* {
+		root * /srv/docs
+		file_server
+	}
+
 	handle_path /api/auth/* {
 		rewrite * /auth{uri}
 		reverse_proxy svc02_auth:8002
@@ -51,6 +56,11 @@
 
 patient.aihps.tech {
 	encode gzip zstd
+
+	handle_path /docs/* {
+		root * /srv/docs
+		file_server
+	}
 
 	handle_path /api/auth/* {
 		rewrite * /auth{uri}

@@ -1,0 +1,230 @@
+{
+  "name": "AI-HPS simulated hospital navigation map",
+  "version": "2026-07-11",
+  "status": "mock_for_demonstration",
+  "disclaimer": "This is a simulated hospital map created for demonstration because the official hospital map was not available.",
+  "default_origin": "main_entrance",
+  "map_url": "/docs/mock-hospital-navigation-map.svg",
+  "landmarks": [
+    {
+      "id": "main_entrance",
+      "name": "Main Entrance Door",
+      "zone": "Entrance",
+      "x": 50,
+      "y": 540,
+      "aliases": ["main entrance", "entrance door", "front door", "hospital entrance", "door at the main entrance", "entree principale", "porte principale"],
+      "description": "Patient entry point beside Dermatology."
+    },
+    {
+      "id": "dermatology",
+      "name": "Dermatology",
+      "zone": "Entrance",
+      "x": 160,
+      "y": 500,
+      "aliases": ["dermatology", "skin department", "skin clinic"],
+      "description": "Building directly beside the main entrance."
+    },
+    {
+      "id": "valley_walk",
+      "name": "Valley Walkway",
+      "zone": "Central access",
+      "x": 260,
+      "y": 430,
+      "aliases": ["valley", "down the valley", "central walkway"],
+      "description": "Sloped walkway leading from the entrance area to the main gate junction."
+    },
+    {
+      "id": "main_gate",
+      "name": "Main Gate Junction",
+      "zone": "Central access",
+      "x": 360,
+      "y": 360,
+      "aliases": ["main gate", "gate", "main junction", "central junction"],
+      "description": "Central junction where the campus splits left and right."
+    },
+    {
+      "id": "reception",
+      "name": "Reception / Information Desk",
+      "zone": "Central access",
+      "x": 360,
+      "y": 270,
+      "aliases": ["reception", "information desk", "help desk", "front desk", "accueil"],
+      "description": "Central point for general information."
+    },
+    {
+      "id": "laboratory",
+      "name": "Laboratory",
+      "zone": "Central access",
+      "x": 500,
+      "y": 285,
+      "aliases": ["laboratory", "lab", "biology lab", "biological laboratory"],
+      "description": "Diagnostic laboratory near the central corridor."
+    },
+    {
+      "id": "pharmacy",
+      "name": "Pharmacy",
+      "zone": "Central access",
+      "x": 260,
+      "y": 270,
+      "aliases": ["pharmacy", "drug store", "medicine counter"],
+      "description": "Medication dispensing point near reception."
+    },
+    {
+      "id": "cashier",
+      "name": "Cashier / Billing",
+      "zone": "Central access",
+      "x": 250,
+      "y": 190,
+      "aliases": ["cashier", "billing", "payment", "pay bills", "finance desk"],
+      "description": "Payment point near administration."
+    },
+    {
+      "id": "admin",
+      "name": "Administration",
+      "zone": "Central access",
+      "x": 360,
+      "y": 170,
+      "aliases": ["administration", "admin office", "administrative block"],
+      "description": "Administrative offices."
+    },
+    {
+      "id": "pediatrics",
+      "name": "Pediatrics",
+      "zone": "Left wing",
+      "x": 140,
+      "y": 280,
+      "aliases": ["pediatrics", "paediatrics", "children ward", "children department", "child clinic"],
+      "description": "Left-side building for children services."
+    },
+    {
+      "id": "gynecology",
+      "name": "Gynecology and Obstetrics",
+      "zone": "Left wing",
+      "x": 95,
+      "y": 180,
+      "aliases": ["gynecology", "gynaecology", "obstetrics", "gynecology and obstetrics", "women clinic", "prenatal clinic"],
+      "description": "Left-side service for gynecology, obstetrics, consultations, childbirth care, and hospitalization."
+    },
+    {
+      "id": "maternity",
+      "name": "Maternity",
+      "zone": "Left wing",
+      "x": 105,
+      "y": 90,
+      "aliases": ["maternity", "maternite", "labour ward", "delivery room", "delivery ward", "birth unit"],
+      "description": "Left-side maternity block near Gynecology and Obstetrics."
+    },
+    {
+      "id": "emergency",
+      "name": "Emergency Department",
+      "zone": "Right wing",
+      "x": 560,
+      "y": 390,
+      "aliases": ["emergency", "emergencies", "urgences", "er", "casualty"],
+      "description": "Urgent care access on the right wing."
+    },
+    {
+      "id": "consultations",
+      "name": "Consultations",
+      "zone": "Right wing",
+      "x": 650,
+      "y": 300,
+      "aliases": ["consultations", "consultation", "outpatient", "clinic", "appointment clinic"],
+      "description": "Right-side consultation block."
+    },
+    {
+      "id": "surgery",
+      "name": "Surgery",
+      "zone": "Right wing",
+      "x": 675,
+      "y": 205,
+      "aliases": ["surgery", "surgical service", "chirurgie", "surgical ward"],
+      "description": "Right-side surgical service."
+    },
+    {
+      "id": "operating_block",
+      "name": "Operating Block",
+      "zone": "Right wing",
+      "x": 780,
+      "y": 150,
+      "aliases": ["operating block", "bloc operatoire", "operating theatre", "operating room", "theatre", "surgical theatre"],
+      "description": "Mock location for the surgical operating block. Service runs 24/24 in the provided hospital text."
+    },
+    {
+      "id": "icu",
+      "name": "ICU / Reanimation",
+      "zone": "Right wing",
+      "x": 780,
+      "y": 240,
+      "aliases": ["icu", "intensive care", "reanimation", "resuscitation", "critical care"],
+      "description": "Critical care unit near the operating block and surgery."
+    },
+    {
+      "id": "hemodialysis",
+      "name": "Hemodialysis",
+      "zone": "Right wing",
+      "x": 665,
+      "y": 95,
+      "aliases": ["hemodialysis", "haemodialysis", "dialysis", "kidney dialysis"],
+      "description": "Right-side hemodialysis unit."
+    },
+    {
+      "id": "blood_bank",
+      "name": "Blood Bank",
+      "zone": "Right wing",
+      "x": 545,
+      "y": 115,
+      "aliases": ["blood bank", "bloodbank", "blood transfusion", "transfusion", "blood donation", "banque de sang"],
+      "description": "Mock blood bank location near the right clinical corridor."
+    },
+    {
+      "id": "radiology",
+      "name": "Radiology / Imaging",
+      "zone": "Right wing",
+      "x": 550,
+      "y": 210,
+      "aliases": ["radiology", "imaging", "x ray", "x-ray", "scanner", "ct scan"],
+      "description": "Imaging unit between laboratory and surgery."
+    }
+  ],
+  "corridors": [
+    {"from": "main_entrance", "to": "dermatology", "instruction": "Move forward from the main entrance and keep Dermatology on your right."},
+    {"from": "dermatology", "to": "valley_walk", "instruction": "Continue down the sloped valley walkway."},
+    {"from": "valley_walk", "to": "main_gate", "instruction": "Follow the walkway until you reach the main gate junction."},
+    {"from": "main_gate", "to": "reception", "instruction": "Go straight from the main gate junction to Reception."},
+    {"from": "reception", "to": "laboratory", "instruction": "Turn right from Reception and pass the Laboratory corridor."},
+    {"from": "reception", "to": "pharmacy", "instruction": "Turn left from Reception toward Pharmacy."},
+    {"from": "pharmacy", "to": "cashier", "instruction": "Continue upward from Pharmacy to Cashier / Billing."},
+    {"from": "cashier", "to": "admin", "instruction": "Walk right from Cashier to the Administration block."},
+    {"from": "main_gate", "to": "pediatrics", "instruction": "At the main gate junction, take the left-side path toward Pediatrics."},
+    {"from": "pediatrics", "to": "gynecology", "instruction": "Continue along the left wing from Pediatrics to Gynecology and Obstetrics."},
+    {"from": "gynecology", "to": "maternity", "instruction": "Continue further on the left wing to reach Maternity."},
+    {"from": "main_gate", "to": "emergency", "instruction": "At the main gate junction, take the right-side path toward Emergency."},
+    {"from": "emergency", "to": "consultations", "instruction": "Pass Emergency and continue to the Consultations block."},
+    {"from": "consultations", "to": "surgery", "instruction": "From Consultations, continue upward toward Surgery."},
+    {"from": "surgery", "to": "operating_block", "instruction": "From Surgery, follow the short corridor to the Operating Block."},
+    {"from": "surgery", "to": "icu", "instruction": "From Surgery, turn right to ICU / Reanimation."},
+    {"from": "surgery", "to": "hemodialysis", "instruction": "From Surgery, continue upward-left to Hemodialysis."},
+    {"from": "hemodialysis", "to": "blood_bank", "instruction": "From Hemodialysis, turn left to the Blood Bank."},
+    {"from": "consultations", "to": "radiology", "instruction": "From Consultations, take the inner corridor toward Radiology / Imaging."},
+    {"from": "radiology", "to": "laboratory", "instruction": "From Radiology, continue left to the Laboratory corridor."},
+    {"from": "radiology", "to": "blood_bank", "instruction": "From Radiology, go upward to the Blood Bank."}
+  ],
+  "query_examples": [
+    "I am at the main entrance and I want to go to the blood bank.",
+    "Where is the bloodbank from the entrance door?",
+    "Direct me from the main gate to maternity.",
+    "I am at Dermatology. How can I reach Gynecology?",
+    "How do I go from Reception to the Operating Block?",
+    "I am near Laboratory and I need Hemodialysis.",
+    "Guide me from Emergency to ICU.",
+    "Where is the operating theatre?",
+    "I want to go to Pediatrics from the front door.",
+    "How can I reach the Consultation block from the main entrance?",
+    "Je suis a l'entree principale, je veux aller a la maternite.",
+    "Ou se trouve le bloc operatoire depuis l'accueil?",
+    "Je suis au laboratoire. Comment aller a la banque de sang?",
+    "Guide-moi vers la gynecologie depuis la porte principale.",
+    "Depuis les urgences, comment atteindre la reanimation?"
+  ]
+}

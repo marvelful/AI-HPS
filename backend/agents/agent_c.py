@@ -11,6 +11,7 @@ from typing import Optional
 import redis as redis_lib
 
 from agents.state import AIHPSState
+from agents.navigation_mock import find_navigation_answer
 from agents.shared.embeddings import find_department
 from shared.config import get_settings
 
@@ -89,6 +90,16 @@ def agent_c(state: AIHPSState) -> dict:
 
     # ── Path 1: department info lookup ───────────────────────────────────────
     if intent == "dept_info":
+        route = find_navigation_answer(query, language)
+        if route:
+            return {
+                "procedure_result": {
+                    "found": True,
+                    "data": route,
+                },
+                "had_result": True,
+            }
+
         try:
             dept = find_department(query, threshold=0.65)
         except Exception as exc:

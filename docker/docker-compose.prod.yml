@@ -240,6 +240,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../PROCEDURES:/srv/procedure-docs:ro
+      - ../docs:/srv/docs:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

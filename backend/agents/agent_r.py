@@ -16,6 +16,7 @@ from typing import Optional
 
 import redis as redis_lib
 
+from agents.navigation_mock import find_navigation_answer
 from agents.state import AIHPSState
 from shared.config import get_settings
 
@@ -83,7 +84,9 @@ _ADMIN_RE = re.compile(
     re.IGNORECASE,
 )
 _DEPT_RE = re.compile(
-    r"\b(where|contact|phone|email|services?|hours|open|close|about the|department|ward|floor|building)\b",
+    r"\b(where|contact|phone|email|services?|hours|open|close|about the|department|ward|floor|building"
+    r"|how|direction|directions|direct|guide|route|path|go|go to|reach|located|location|find|"
+    r"comment|aller|trouver|chemin|itin[eÃé]raire|guider|dirige|ou se trouve|o[uÃ¹] se trouve)\b",
     re.IGNORECASE,
 )
 
@@ -165,6 +168,14 @@ def agent_r(state: AIHPSState) -> dict:
         }
 
     language = _detect_language(query)
+    if find_navigation_answer(query, language):
+        return {
+            "is_emergency": False,
+            "language": language,
+            "intent": "dept_info",
+            "knowledge_domain": "department_info",
+        }
+
     intent, knowledge_domain = _llm_classify(query)
 
     return {

@@ -120,6 +120,10 @@ def _to_json(data: dict) -> dict:
         "risk_level":       data.get("risk_level"),
         "when_to_seek_help": data.get("when_to_seek_help"),
         "source":           data.get("source"),
+        "map_url":          data.get("map_url"),
+        "origin":           data.get("origin"),
+        "destination":      data.get("destination"),
+        "estimated_time_minutes": data.get("estimated_time_minutes"),
     }
 
 
