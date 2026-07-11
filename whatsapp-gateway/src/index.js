@@ -57,6 +57,14 @@ function normalizeCameroonPhone(value) {
   return d;
 }
 
+function safeJson(value) {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 function codeHash(code) {
   return crypto.createHash('sha256').update(String(code)).digest('hex');
 }
@@ -239,11 +247,16 @@ async function sendSms(phone, message) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     timeout: 45000,
   });
+  const results = Array.isArray(response.data?.results) ? response.data.results : [];
+  const failed = results.find(result => String(result.code) !== '0');
   console.log('[whatsapp-gateway] SMS provider response', {
     phone: normalizedPhone,
     status: response.status,
-    data: response.data,
+    data: safeJson(response.data),
   });
+  if (!results.length || failed) {
+    throw new Error(`MTarget SMS was not accepted: ${safeJson(response.data)}`);
+  }
   return response.data;
 }
 
