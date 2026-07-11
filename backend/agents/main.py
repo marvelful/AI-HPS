@@ -103,10 +103,37 @@ class QueryResponse(BaseModel):
     error: Optional[str] = None
 
 
+def _formatted_answer_text(result: dict) -> str:
+    payload = result.get("formatted_output")
+    if isinstance(payload, dict):
+        if isinstance(payload.get("data"), dict):
+            data = payload["data"]
+            return str(data.get("answer") or data.get("message") or "")
+        return str(payload.get("answer") or payload.get("message") or "")
+    return str(payload or "")
+
+
+def _looks_like_content_gap(result: dict) -> bool:
+    if not result.get("had_result", False):
+        return True
+    answer = _formatted_answer_text(result).lower()
+    gap_phrases = (
+        "do not contain specific information",
+        "does not contain specific information",
+        "no specific information",
+        "no matching information",
+        "couldn't find",
+        "could not find",
+        "cannot answer",
+        "can't answer",
+    )
+    return any(phrase in answer for phrase in gap_phrases)
+
+
 def _write_query_event(req: QueryRequest, result: dict, elapsed_ms: int) -> None:
     from shared.database import SessionLocal
     from shared.models.auth import Admin, Patient, Staff, User
-    from shared.models.analytics import QueryEvent
+    from shared.models.analytics import ContentGap, QueryEvent
     db = SessionLocal()
     try:
         user_id = None
@@ -124,18 +151,40 @@ def _write_query_event(req: QueryRequest, result: dict, elapsed_ms: int) -> None
             except ValueError:
                 user_id = None
 
+        raw_intent = result.get("intent")
+        intent_map = {
+            "dept_info": "navigation",
+            "department_info": "navigation",
+            "navigation": "navigation",
+            "procedure": "procedure",
+            "emergency": "emergency",
+            "policy": "information",
+            "information": "information",
+            "unknown": "unknown",
+        }
+        intent = intent_map.get(str(raw_intent or "").strip().lower(), "unknown")
+
         evt = QueryEvent(
             session_id=req.session_id,
             user_id=user_id,
             query=req.raw_query[:2000],
-            intent=result.get("intent"),
-            agent=result.get("intent") or "unknown",
-            had_result=result.get("had_result", False),
+            intent=intent,
+            agent=raw_intent or "unknown",
+            had_result=not _looks_like_content_gap(result),
             response_time_ms=elapsed_ms,
             platform=req.platform,
             stream=req.stream,
         )
         db.add(evt)
+        if _looks_like_content_gap(result):
+            query_text = req.raw_query.strip()[:2000]
+            gap = db.query(ContentGap).filter(ContentGap.query == query_text).first()
+            if gap is None:
+                gap = ContentGap(query=query_text, occurrence_count=1)
+                db.add(gap)
+            else:
+                gap.occurrence_count += 1
+                gap.last_seen = datetime.now(timezone.utc)
         db.commit()
 
         publish_audit(
@@ -145,8 +194,8 @@ def _write_query_event(req: QueryRequest, result: dict, elapsed_ms: int) -> None
             str(evt.id),
             {
                 "query": req.raw_query[:500],
-                "intent": result.get("intent"),
-                "had_result": result.get("had_result", False),
+                "intent": intent,
+                "had_result": not _looks_like_content_gap(result),
             },
             {
                 "platform": req.platform,
@@ -187,6 +236,8 @@ async def query_pipeline(req: QueryRequest):
         raise HTTPException(status_code=500, detail=f"Pipeline error: {type(exc).__name__}: {exc}")
 
     elapsed_ms = int((time.time() - t0) * 1000)
+    if _looks_like_content_gap(result):
+        result["had_result"] = False
     threading.Thread(
         target=_write_query_event, args=(req, result, elapsed_ms), daemon=True
     ).start()
