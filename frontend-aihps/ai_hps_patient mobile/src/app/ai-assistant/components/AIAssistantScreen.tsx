@@ -151,8 +151,6 @@ function AINavigationBubble({ msg, lang }: { msg: Message; lang: 'fr' | 'en' }) 
     typeof d === 'string' ? d : (d.instruction || d.text || JSON.stringify(d))
   );
   const heading = 'Navigation';
-  const mapLabel = lang === 'en' ? 'View full map' : 'Voir le plan complet';
-  const mapHref = raw?.map_url || '/docs/mock-hospital-navigation-map.svg';
 
   return (
     <div className="flex items-end gap-2 message-fade-in">
@@ -179,13 +177,6 @@ function AINavigationBubble({ msg, lang }: { msg: Message; lang: 'fr' | 'en' }) 
             </div>
           ))}
         </div>
-        <Link
-          href={mapHref}
-          className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95"
-          style={{ background: 'var(--secondary-light)', color: 'var(--secondary)' }}
-        >
-          {mapLabel}
-        </Link>
       </div>
     </div>
   );

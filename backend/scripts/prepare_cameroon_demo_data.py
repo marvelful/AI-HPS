@@ -19,7 +19,7 @@ from shared.database import Base, SessionLocal, engine
 from shared.models.analytics import ContentGap, QueryEvent
 from shared.models.audit import AuditLog
 from shared.models.auth import Admin, Patient, Staff, User
-from shared.models.procedures import Department, ProcedureEntry
+from shared.models.procedures import Department, ProcedureApproval, ProcedureEntry
 from services.svc02_auth.service import hash_password
 from services.svc06_audit.service import _sign
 
@@ -156,6 +156,38 @@ STAFF_ACCOUNTS = [
         "employee_id": "HGD-MAT-022",
         "phone": "237678574116",
         "department": "Maternity",
+    },
+    {
+        "email": "samuel.njoya@gmail.com",
+        "full_name": "Dr. Samuel Njoya",
+        "role": "department_head",
+        "employee_id": "HGD-PED-012",
+        "phone": "237676884921",
+        "department": "Pediatrics",
+    },
+    {
+        "email": "mireille.manga@gmail.com",
+        "full_name": "Dr. Mireille Manga",
+        "role": "department_head",
+        "employee_id": "HGD-GYN-017",
+        "phone": "237679824551",
+        "department": "Gynecology and Obstetrics",
+    },
+    {
+        "email": "aline.fokam@yahoo.com",
+        "full_name": "Dr. Aline Fokam",
+        "role": "department_head",
+        "employee_id": "HGD-BB-005",
+        "phone": "237674901336",
+        "department": "Blood Bank",
+    },
+    {
+        "email": "alain.mouelle@yahoo.com",
+        "full_name": "Dr. Alain Mouelle",
+        "role": "department_head",
+        "employee_id": "HGD-ICU-011",
+        "phone": "237677409633",
+        "department": "ICU",
     },
     {
         "email": "armel.fotso@gmail.com",
@@ -337,6 +369,10 @@ def _align_schema(db) -> None:
     db.execute(text("ALTER TABLE aihps_procedures.procedure_entries ADD COLUMN IF NOT EXISTS knowledge_domain VARCHAR(60) NOT NULL DEFAULT 'clinical_procedure'"))
     db.execute(text("ALTER TABLE aihps_procedures.procedure_entries ADD COLUMN IF NOT EXISTS source_id UUID"))
     db.execute(text("ALTER TABLE aihps_procedures.procedure_entries ADD COLUMN IF NOT EXISTS document_url TEXT"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_entries DROP CONSTRAINT IF EXISTS procedure_entries_created_by_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_entries DROP CONSTRAINT IF EXISTS procedure_entries_updated_by_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_versions DROP CONSTRAINT IF EXISTS procedure_versions_created_by_fkey"))
+    db.execute(text("ALTER TABLE aihps_procedures.procedure_approvals DROP CONSTRAINT IF EXISTS procedure_approvals_approver_id_fkey"))
     db.commit()
 
 
@@ -516,6 +552,88 @@ def _seed_demo_procedures(db, admin_user: User, departments: dict[str, Departmen
     return count
 
 
+PENDING_APPROVAL_PROCEDURES = [
+    {
+        "title": "HGD Appendectomy Pre-operative Checklist",
+        "summary": "Local checklist for preparing an appendectomy patient before transfer to the operating block.",
+        "content": (
+            "Confirm patient identity, consent, fasting status, allergy history, vital signs, IV access, "
+            "antibiotic timing, laboratory results, and theatre readiness before appendectomy."
+        ),
+        "department": "Surgery",
+        "risk_level": "high",
+        "reviewers": ["celestine.ekane@gmail.com", "alain.mouelle@yahoo.com"],
+    },
+    {
+        "title": "Maternity Post-delivery Observation Protocol",
+        "summary": "Observation steps for mother and newborn during the first hours after delivery.",
+        "content": (
+            "Monitor bleeding, uterine tone, blood pressure, temperature, pain, newborn breathing, breastfeeding "
+            "support, and danger signs before transfer from delivery room."
+        ),
+        "department": "Maternity",
+        "risk_level": "medium",
+        "reviewers": ["brenda.tchinda@yahoo.com", "mireille.manga@gmail.com"],
+    },
+    {
+        "title": "Blood Product Request and Release Procedure",
+        "summary": "Workflow for requesting, cross-matching, documenting, and releasing blood products.",
+        "content": (
+            "Verify request form, patient sample label, blood group, compatibility result, prescriber signature, "
+            "cold-chain handling, and release documentation before issuing blood products."
+        ),
+        "department": "Blood Bank",
+        "risk_level": "critical",
+        "reviewers": ["aline.fokam@yahoo.com", "lydia.nkeng@yahoo.com"],
+    },
+    {
+        "title": "Pediatric Fever Triage Procedure",
+        "summary": "First-line triage steps for children presenting with fever at the pediatric unit.",
+        "content": (
+            "Record age, temperature, danger signs, malaria test status, hydration, convulsion history, vaccination "
+            "status, and urgency category before assigning the child to consultation."
+        ),
+        "department": "Pediatrics",
+        "risk_level": "medium",
+        "reviewers": ["samuel.njoya@gmail.com", "armel.fotso@gmail.com"],
+    },
+]
+
+
+def _seed_pending_approvals(db, admin_user: User, departments: dict[str, Department]) -> int:
+    seeded = 0
+    staff_by_email = {staff.email: staff for staff in db.query(Staff).filter(Staff.is_active.is_(True)).all()}
+    for item in PENDING_APPROVAL_PROCEDURES:
+        proc = db.query(ProcedureEntry).filter(ProcedureEntry.title == item["title"]).first()
+        if proc is None:
+            proc = ProcedureEntry(title=item["title"], content=item["content"], created_by=admin_user.id)
+            db.add(proc)
+            db.flush()
+        proc.summary = item["summary"]
+        proc.content = item["content"]
+        proc.steps = [{"instruction": item["content"]}]
+        proc.compliance_annotations = []
+        proc.knowledge_domain = "clinical_procedure"
+        proc.stream_target = "B"
+        proc.applicable_roles = ["department_head", "doctor", "nurse", "staff"]
+        proc.risk_level = item["risk_level"]
+        proc.status = "pending"
+        proc.department_id = departments[item["department"]].id
+        proc.language = "EN"
+        proc.updated_by = admin_user.id
+        proc.published_at = None
+        db.flush()
+
+        db.query(ProcedureApproval).filter(ProcedureApproval.entry_id == proc.id).delete(synchronize_session=False)
+        for email in item["reviewers"]:
+            reviewer = staff_by_email.get(email)
+            if reviewer:
+                db.add(ProcedureApproval(entry_id=proc.id, approver_id=reviewer.id, decision="pending"))
+        seeded += 1
+    db.commit()
+    return seeded
+
+
 def _seed_content_gaps(db) -> int:
     count = 0
     for query, occurrences, days_ago in CONTENT_GAPS:
@@ -585,6 +703,7 @@ def main() -> None:
         departments = _seed_departments(db)
         admin_user, _accounts = _seed_people(db, departments)
         procedure_count = _seed_demo_procedures(db, admin_user, departments)
+        pending_count = _seed_pending_approvals(db, admin_user, departments)
         gap_count = _seed_content_gaps(db)
         query_count = _seed_query_events(db, admin_user)
         audit_count = _seed_audit_events(db, admin_user)
@@ -592,6 +711,7 @@ def main() -> None:
             "cameroon_demo_ready "
             f"departments={len(departments)} "
             f"procedures={procedure_count} "
+            f"pending_approvals={pending_count} "
             f"content_gaps={gap_count} "
             f"query_events={query_count} "
             f"audit_events={audit_count} "

@@ -15,7 +15,18 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navItems = [
+type NavItem = {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  href: string;
+  roles: string[];
+  badge: string | null;
+  badgeColor?: 'amber' | 'blue' | null;
+  accentColor?: string | null;
+};
+
+const navItems: NavItem[] = [
   { key: 'nav-dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['all'], badge: null, accentColor: null },
   { key: 'nav-procedures', label: 'Procedures', icon: ClipboardList, href: '/procedures', roles: ['all'], badge: null, accentColor: null },
   { key: 'nav-assistant', label: 'AI Assistant', icon: Sparkles, href: '/ai-assistant', roles: ['all'], badge: null, accentColor: 'purple' },

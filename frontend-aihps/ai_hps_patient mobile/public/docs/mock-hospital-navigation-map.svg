@@ -1,176 +1,159 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="650" viewBox="0 0 920 650" role="img" aria-label="AI-HPS simulated hospital navigation map">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="680" viewBox="0 0 960 680" role="img" aria-label="AI-HPS simulated hospital building navigation map">
   <defs>
     <style>
-      .bg { fill: #f8fafc; }
-      .road { fill: none; stroke: #334155; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; opacity: .75; }
-      .road2 { fill: none; stroke: #94a3b8; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 8; }
-      .left { fill: #dbeafe; stroke: #2563eb; }
-      .right { fill: #dcfce7; stroke: #16a34a; }
-      .central { fill: #fef3c7; stroke: #d97706; }
-      .entrance { fill: #fee2e2; stroke: #dc2626; }
-      .critical { fill: #fae8ff; stroke: #a21caf; }
-      .label { font: 600 13px Arial, sans-serif; fill: #0f172a; }
+      .bg { fill: #f4f7fb; }
+      .campus { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; }
+      .path { fill: none; stroke: #64748b; stroke-width: 16; stroke-linecap: round; stroke-linejoin: round; opacity: .45; }
+      .walk { fill: none; stroke: #0f766e; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 10 8; }
+      .building { stroke: #1e293b; stroke-width: 2; }
+      .roof { fill: rgba(15, 23, 42, .08); }
+      .central { fill: #fef3c7; }
+      .left { fill: #dbeafe; }
+      .right { fill: #dcfce7; }
+      .critical { fill: #fee2e2; }
+      .support { fill: #e0e7ff; }
+      .entry { fill: #fde68a; }
+      .label { font: 700 13px Arial, sans-serif; fill: #0f172a; }
       .small { font: 11px Arial, sans-serif; fill: #475569; }
-      .title { font: 700 22px Arial, sans-serif; fill: #0f172a; }
+      .title { font: 700 24px Arial, sans-serif; fill: #0f172a; }
       .note { font: 12px Arial, sans-serif; fill: #475569; }
-      .pin { fill: #0f172a; }
-      .legendText { font: 12px Arial, sans-serif; fill: #0f172a; }
+      .zone { font: 700 12px Arial, sans-serif; fill: #334155; letter-spacing: .5px; }
+      .pin { fill: #0f766e; }
     </style>
   </defs>
 
-  <rect class="bg" x="0" y="0" width="920" height="650"/>
-  <text class="title" x="32" y="36">AI-HPS Simulated Hospital Navigation Map</text>
-  <text class="note" x="32" y="58">Mock layout for demonstration only. Routes are consistent with the chatbot's predefined navigation dataset.</text>
+  <rect class="bg" width="960" height="680"/>
+  <text class="title" x="34" y="40">AI-HPS Hospital Building Navigation Mockup</text>
+  <text class="note" x="34" y="62">Simulated hospital layout for the patient navigation demonstration.</text>
 
-  <rect x="28" y="82" width="860" height="520" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect class="campus" x="34" y="86" width="892" height="548" rx="18"/>
+  <rect x="64" y="112" width="832" height="486" rx="12" fill="#eef6f7" stroke="#dbeafe"/>
 
-  <!-- Campus corridors -->
-  <path class="road" d="M50 540 L160 500 L260 430 L360 360"/>
-  <path class="road" d="M360 360 L360 270"/>
-  <path class="road" d="M360 270 L500 285"/>
-  <path class="road" d="M360 270 L260 270 L250 190 L360 170"/>
-  <path class="road" d="M360 360 L140 280 L95 180 L105 90"/>
-  <path class="road" d="M360 360 L560 390 L650 300 L675 205"/>
-  <path class="road" d="M675 205 L780 150"/>
-  <path class="road" d="M675 205 L780 240"/>
-  <path class="road" d="M675 205 L665 95 L545 115"/>
-  <path class="road" d="M650 300 L550 210 L500 285"/>
-  <path class="road" d="M550 210 L545 115"/>
+  <path class="path" d="M121 552 L206 512 L292 445 L402 374"/>
+  <path class="path" d="M402 374 L402 291 L486 291"/>
+  <path class="path" d="M402 291 L278 250 L196 225"/>
+  <path class="path" d="M486 291 L598 256 L746 217"/>
+  <path class="path" d="M486 291 L612 340 L780 394"/>
+  <path class="path" d="M402 374 L265 382 L170 420"/>
 
-  <!-- Guide arrows / branches -->
-  <path class="road2" d="M350 380 C260 360 190 330 140 280"/>
-  <text class="small" x="160" y="335">Left wing: Pediatrics, Gynecology, Maternity</text>
-  <path class="road2" d="M380 380 C470 370 535 365 560 390"/>
-  <text class="small" x="545" y="430">Right wing: Emergency, Consultations, Surgery</text>
+  <path class="walk" d="M121 552 L206 512 L292 445 L402 374 L402 291 L278 250 L196 225"/>
+  <path class="walk" d="M402 291 L486 291 L598 256 L746 217"/>
+  <path class="walk" d="M486 291 L612 340 L780 394"/>
 
-  <!-- Nodes -->
-  <g transform="translate(50,540)">
-    <circle class="pin" r="5"/>
-    <rect class="entrance" x="-28" y="10" width="125" height="36" rx="6"/>
-    <text class="label" x="-18" y="33">Main Entrance</text>
+  <text class="zone" x="84" y="143">LEFT CLINICAL WING</text>
+  <text class="zone" x="634" y="143">RIGHT CLINICAL WING</text>
+  <text class="zone" x="375" y="190">CENTRAL SERVICES</text>
+
+  <g>
+    <rect class="building entry" x="78" y="526" width="126" height="48" rx="4"/>
+    <polygon class="roof" points="78,526 96,510 222,510 204,526"/>
+    <text class="label" x="96" y="552">Main Entrance</text>
+    <text class="small" x="102" y="568">Starting point</text>
   </g>
 
-  <g transform="translate(160,500)">
-    <circle class="pin" r="5"/>
-    <rect class="entrance" x="-54" y="-45" width="112" height="34" rx="6"/>
-    <text class="label" x="-43" y="-23">Dermatology</text>
+  <g>
+    <rect class="building support" x="214" y="462" width="130" height="56" rx="4"/>
+    <polygon class="roof" points="214,462 232,446 362,446 344,462"/>
+    <text class="label" x="238" y="492">Dermatology</text>
+    <text class="small" x="244" y="508">Front building</text>
   </g>
 
-  <g transform="translate(260,430)">
-    <circle class="pin" r="5"/>
-    <text class="small" x="-54" y="-15">Valley Walkway</text>
+  <g>
+    <rect class="building entry" x="348" y="342" width="112" height="64" rx="4"/>
+    <polygon class="roof" points="348,342 366,326 478,326 460,342"/>
+    <text class="label" x="376" y="372">Main Gate</text>
+    <text class="small" x="373" y="388">Junction</text>
   </g>
 
-  <g transform="translate(360,360)">
-    <circle class="pin" r="6"/>
-    <rect class="central" x="-58" y="12" width="126" height="34" rx="6"/>
-    <text class="label" x="-47" y="35">Main Gate</text>
+  <g>
+    <rect class="building central" x="430" y="244" width="116" height="74" rx="4"/>
+    <polygon class="roof" points="430,244 448,226 564,226 546,244"/>
+    <text class="label" x="456" y="276">Reception</text>
+    <text class="small" x="452" y="294">Central desk</text>
   </g>
 
-  <g transform="translate(360,270)">
-    <circle class="pin" r="5"/>
-    <rect class="central" x="-74" y="-50" width="150" height="34" rx="6"/>
-    <text class="label" x="-63" y="-28">Reception / Info</text>
+  <g>
+    <rect class="building central" x="325" y="214" width="102" height="62" rx="4"/>
+    <polygon class="roof" points="325,214 343,198 445,198 427,214"/>
+    <text class="label" x="346" y="245">Laboratory</text>
+    <text class="small" x="346" y="261">Samples</text>
   </g>
 
-  <g transform="translate(500,285)">
-    <circle class="pin" r="5"/>
-    <rect class="central" x="-50" y="12" width="100" height="34" rx="6"/>
-    <text class="label" x="-34" y="35">Laboratory</text>
+  <g>
+    <rect class="building left" x="120" y="190" width="118" height="68" rx="4"/>
+    <polygon class="roof" points="120,190 138,172 256,172 238,190"/>
+    <text class="label" x="146" y="222">Pediatrics</text>
+    <text class="small" x="146" y="240">Children unit</text>
   </g>
 
-  <g transform="translate(260,270)">
-    <circle class="pin" r="5"/>
-    <rect class="central" x="-55" y="12" width="106" height="34" rx="6"/>
-    <text class="label" x="-34" y="35">Pharmacy</text>
+  <g>
+    <rect class="building left" x="74" y="352" width="142" height="74" rx="4"/>
+    <polygon class="roof" points="74,352 92,334 234,334 216,352"/>
+    <text class="label" x="101" y="384">Gynecology</text>
+    <text class="small" x="101" y="402">Obstetrics clinic</text>
   </g>
 
-  <g transform="translate(250,190)">
-    <circle class="pin" r="5"/>
-    <rect class="central" x="-70" y="-44" width="132" height="34" rx="6"/>
-    <text class="label" x="-56" y="-22">Cashier / Billing</text>
+  <g>
+    <rect class="building left" x="210" y="120" width="140" height="78" rx="4"/>
+    <polygon class="roof" points="210,120 230,100 370,100 350,120"/>
+    <text class="label" x="252" y="153">Maternity</text>
+    <text class="small" x="245" y="172">Delivery ward</text>
   </g>
 
-  <g transform="translate(360,170)">
-    <circle class="pin" r="5"/>
-    <rect class="central" x="-66" y="-56" width="132" height="34" rx="6"/>
-    <text class="label" x="-47" y="-34">Administration</text>
+  <g>
+    <rect class="building right critical" x="620" y="176" width="126" height="70" rx="4"/>
+    <polygon class="roof" points="620,176 638,158 764,158 746,176"/>
+    <text class="label" x="651" y="209">Emergency</text>
+    <text class="small" x="650" y="227">24h access</text>
   </g>
 
-  <g transform="translate(140,280)">
-    <circle class="pin" r="5"/>
-    <rect class="left" x="-105" y="-20" width="92" height="34" rx="6"/>
-    <text class="label" x="-91" y="2">Pediatrics</text>
+  <g>
+    <rect class="building right" x="748" y="166" width="126" height="70" rx="4"/>
+    <polygon class="roof" points="748,166 766,148 892,148 874,166"/>
+    <text class="label" x="777" y="198">Surgery</text>
+    <text class="small" x="769" y="216">Surgical ward</text>
   </g>
 
-  <g transform="translate(95,180)">
-    <circle class="pin" r="5"/>
-    <rect class="left" x="-46" y="-48" width="158" height="34" rx="6"/>
-    <text class="label" x="-34" y="-26">Gynecology / Obs.</text>
+  <g>
+    <rect class="building critical" x="730" y="320" width="136" height="80" rx="4"/>
+    <polygon class="roof" points="730,320 750,300 886,300 866,320"/>
+    <text class="label" x="764" y="352">Operating</text>
+    <text class="label" x="778" y="369">Block</text>
+    <text class="small" x="756" y="388">Restricted area</text>
   </g>
 
-  <g transform="translate(105,90)">
-    <circle class="pin" r="5"/>
-    <rect class="left" x="-44" y="-48" width="106" height="34" rx="6"/>
-    <text class="label" x="-24" y="-26">Maternity</text>
+  <g>
+    <rect class="building critical" x="584" y="338" width="110" height="66" rx="4"/>
+    <polygon class="roof" points="584,338 602,320 712,320 694,338"/>
+    <text class="label" x="622" y="370">ICU</text>
+    <text class="small" x="604" y="388">Critical care</text>
   </g>
 
-  <g transform="translate(560,390)">
-    <circle class="pin" r="5"/>
-    <rect class="critical" x="-12" y="12" width="110" height="34" rx="6"/>
-    <text class="label" x="5" y="35">Emergency</text>
+  <g>
+    <rect class="building right" x="608" y="458" width="148" height="66" rx="4"/>
+    <polygon class="roof" points="608,458 626,440 774,440 756,458"/>
+    <text class="label" x="640" y="491">Radiology</text>
+    <text class="small" x="640" y="508">Imaging</text>
   </g>
 
-  <g transform="translate(650,300)">
-    <circle class="pin" r="5"/>
-    <rect class="right" x="12" y="-18" width="118" height="34" rx="6"/>
-    <text class="label" x="25" y="4">Consultations</text>
+  <g>
+    <rect class="building right" x="768" y="458" width="118" height="66" rx="4"/>
+    <polygon class="roof" points="768,458 786,440 904,440 886,458"/>
+    <text class="label" x="793" y="490">Blood</text>
+    <text class="label" x="794" y="506">Bank</text>
   </g>
 
-  <g transform="translate(675,205)">
-    <circle class="pin" r="5"/>
-    <rect class="right" x="-15" y="-50" width="90" height="34" rx="6"/>
-    <text class="label" x="5" y="-28">Surgery</text>
+  <g>
+    <rect class="building support" x="410" y="446" width="130" height="62" rx="4"/>
+    <polygon class="roof" points="410,446 428,428 558,428 540,446"/>
+    <text class="label" x="438" y="478">Pharmacy</text>
+    <text class="small" x="438" y="495">Medicines</text>
   </g>
 
-  <g transform="translate(780,150)">
-    <circle class="pin" r="5"/>
-    <rect class="critical" x="-12" y="-54" width="128" height="34" rx="6"/>
-    <text class="label" x="1" y="-32">Operating Block</text>
+  <g>
+    <circle class="pin" cx="121" cy="552" r="7"/>
+    <circle class="pin" cx="402" cy="374" r="7"/>
+    <circle class="pin" cx="486" cy="291" r="7"/>
+    <text class="small" x="76" y="617">Dashed green lines show the simulated paths used by the chatbot.</text>
   </g>
-
-  <g transform="translate(780,240)">
-    <circle class="pin" r="5"/>
-    <rect class="critical" x="15" y="-16" width="112" height="34" rx="6"/>
-    <text class="label" x="28" y="6">ICU / Reanim.</text>
-  </g>
-
-  <g transform="translate(665,95)">
-    <circle class="pin" r="5"/>
-    <rect class="right" x="-78" y="-54" width="122" height="34" rx="6"/>
-    <text class="label" x="-66" y="-32">Hemodialysis</text>
-  </g>
-
-  <g transform="translate(545,115)">
-    <circle class="pin" r="5"/>
-    <rect class="right" x="-98" y="-20" width="94" height="34" rx="6"/>
-    <text class="label" x="-86" y="2">Blood Bank</text>
-  </g>
-
-  <g transform="translate(550,210)">
-    <circle class="pin" r="5"/>
-    <rect class="right" x="-104" y="-18" width="96" height="34" rx="6"/>
-    <text class="label" x="-93" y="4">Radiology</text>
-  </g>
-
-  <!-- Legend -->
-  <rect x="620" y="520" width="240" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-  <rect class="entrance" x="638" y="535" width="18" height="12"/>
-  <text class="legendText" x="663" y="545">Entrance area</text>
-  <rect class="left" x="638" y="558" width="18" height="12"/>
-  <text class="legendText" x="663" y="568">Left wing</text>
-  <rect class="right" x="750" y="535" width="18" height="12"/>
-  <text class="legendText" x="775" y="545">Right wing</text>
-  <rect class="critical" x="750" y="558" width="18" height="12"/>
-  <text class="legendText" x="775" y="568">Critical care</text>
 </svg>

@@ -68,6 +68,27 @@ interface DisplayProcedure {
 }
 
 const ITEMS_PER_PAGE = 10;
+const REVIEWER_ROLES = new Set([
+  'department_head',
+  'department_admin',
+  'doctor',
+  'clinician',
+  'nurse',
+  'pharmacist',
+  'lab_technician',
+  'radiologist',
+  'infection_control_officer',
+  'staff',
+]);
+
+function roleLabel(role: string): string {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function sortValue(proc: DisplayProcedure, key: string): string {
+  const value = proc[key as keyof DisplayProcedure];
+  return typeof value === 'string' ? value : '';
+}
 
 function CreateProcedureModal({
   departments,
@@ -249,7 +270,9 @@ function CreateProcedureModal({
                       />
                       <span className="flex-1 min-w-0">
                         <span className="block font-medium text-foreground truncate" style={{ fontSize: '13px' }}>{person.full_name}</span>
-                        <span className="block text-muted-foreground truncate" style={{ fontSize: '12px' }}>{person.role}</span>
+                        <span className="block text-muted-foreground truncate" style={{ fontSize: '12px' }}>
+                          {roleLabel(person.role)}{person.email ? ` - ${person.email}` : ''}
+                        </span>
                       </span>
                     </label>
                   ))
@@ -337,7 +360,17 @@ export default function ProceduresContent() {
   }, [allProcedures]);
 
   const approvers = useMemo(() => {
-    return (staffData?.items ?? []).filter((person: ApiUser) => person.role !== 'patient' && person.id !== user?.id && person.is_active);
+    return (staffData?.items ?? [])
+      .filter((person: ApiUser) => (
+        person.is_active &&
+        person.id !== user?.id &&
+        REVIEWER_ROLES.has(person.role)
+      ))
+      .sort((a: ApiUser, b: ApiUser) => {
+        const aHead = a.role === 'department_head' ? 0 : 1;
+        const bHead = b.role === 'department_head' ? 0 : 1;
+        return aHead - bHead || a.full_name.localeCompare(b.full_name);
+      });
   }, [staffData, user?.id]);
 
   const statuses = ['All Status', 'Draft', 'Pending', 'Approved', 'Published', 'Archived'];
@@ -357,8 +390,8 @@ export default function ProceduresContent() {
   const sorted = useMemo(() => {
     if (!sortCol || !sortDir) return filtered;
     return [...filtered].sort((a, b) => {
-      const aVal = (a as Record<string, string>)[sortCol] ?? '';
-      const bVal = (b as Record<string, string>)[sortCol] ?? '';
+      const aVal = sortValue(a, sortCol);
+      const bVal = sortValue(b, sortCol);
       return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
   }, [filtered, sortCol, sortDir]);
