@@ -17,6 +17,8 @@ from pydantic import BaseModel
 
 from agents.state import initial_state
 from agents.graph import get_pipeline
+from agents.agent_r import _detect_language
+from agents.navigation_mock import find_navigation_answer
 from agents.shared.embeddings import load as load_embeddings
 from shared.events import publish_audit
 
@@ -140,13 +142,10 @@ def _write_query_event(req: QueryRequest, result: dict, elapsed_ms: int) -> None
         if req.user_id:
             try:
                 candidate = uuid.UUID(req.user_id)
-                exists = (
-                    db.query(User.id).filter(User.id == candidate).first()
-                    or db.query(Admin.id).filter(Admin.id == candidate).first()
-                    or db.query(Staff.id).filter(Staff.id == candidate).first()
-                    or db.query(Patient.id).filter(Patient.id == candidate).first()
-                )
-                if exists:
+                # query_events.user_id still references the legacy users table.
+                # Split-table Staff/Admin/Patient IDs are valid actors, but storing
+                # them here violates that FK and can flood production logs.
+                if db.query(User.id).filter(User.id == candidate).first():
                     user_id = candidate
             except ValueError:
                 user_id = None
@@ -215,8 +214,35 @@ async def query_pipeline(req: QueryRequest):
     if not req.raw_query or not req.raw_query.strip():
         raise HTTPException(status_code=422, detail="raw_query must not be empty")
 
+    raw_query = req.raw_query.strip()
+    language = _detect_language(raw_query)
+    route = find_navigation_answer(raw_query, language)
+    if route:
+        result = {
+            "formatted_output": {"found": True, "data": route},
+            "output_type": "json",
+            "is_emergency": False,
+            "had_result": True,
+            "language": language,
+            "intent": "dept_info",
+            "knowledge_domain": "department_info",
+        }
+        threading.Thread(
+            target=_write_query_event, args=(req, result, 0), daemon=True
+        ).start()
+        return QueryResponse(
+            output=result["formatted_output"],
+            output_type="json",
+            is_emergency=False,
+            had_result=True,
+            language=language,
+            intent="dept_info",
+            knowledge_domain="department_info",
+            error=None,
+        )
+
     state = initial_state(
-        raw_query=req.raw_query.strip(),
+        raw_query=raw_query,
         platform=req.platform,
         stream=req.stream,
         user_id=req.user_id,
