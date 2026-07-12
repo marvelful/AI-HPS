@@ -136,6 +136,36 @@ function senderPhoneFromChat(chatId) {
   return normalizeCameroonPhone(String(chatId || '').split('@')[0]);
 }
 
+async function resolveSenderPhone(chatId) {
+  const rawChatId = String(chatId || '');
+  const directPhone = senderPhoneFromChat(rawChatId);
+  if (directPhone && !rawChatId.includes('@lid')) return directPhone;
+
+  try {
+    const openwaSessionId = await getOpenWaSessionId();
+    const encodedChatId = encodeURIComponent(rawChatId);
+    const response = await axios.get(
+      `${OPENWA_API_URL}/sessions/${openwaSessionId}/contacts/${encodedChatId}/phone`,
+      { headers: openwaHeaders(), timeout: 15000 }
+    );
+    const phone = normalizeCameroonPhone(
+      response.data?.phone ||
+      response.data?.number ||
+      response.data?.contact?.phone ||
+      response.data?.contact?.number ||
+      response.data
+    );
+    if (phone) return phone;
+  } catch (error) {
+    console.warn('[whatsapp-gateway] Could not resolve sender phone from OpenWA contact lookup', {
+      chatId: rawChatId,
+      error: error.response?.data || error.message,
+    });
+  }
+
+  return directPhone;
+}
+
 async function resolveIdentity(phone) {
   if (!INTERNAL_TOKEN) {
     return publicIdentity(phone);
@@ -217,12 +247,23 @@ async function getOpenWaSessionId() {
     headers: openwaHeaders(),
     timeout: 10000,
   });
-  const sessions = Array.isArray(response.data) ? response.data : [];
-  const found = sessions.find(item => item.name === SESSION_ID || item.id === SESSION_ID);
+  const body = response.data || {};
+  const sessions = Array.isArray(body)
+    ? body
+    : Array.isArray(body.sessions)
+      ? body.sessions
+      : Array.isArray(body.data)
+        ? body.data
+        : [];
+  const found = sessions.find(item => {
+    const id = String(item.id || item.uuid || item.sessionId || item.session_id || '');
+    const name = String(item.name || item.session || item.sessionName || '');
+    return id === SESSION_ID || name === SESSION_ID;
+  });
   if (!found) {
     throw new Error(`OpenWA session not found: ${SESSION_ID}`);
   }
-  cachedOpenWaSessionId = found.id;
+  cachedOpenWaSessionId = found.id || found.uuid || found.sessionId || found.session_id;
   return cachedOpenWaSessionId;
 }
 
@@ -376,7 +417,7 @@ async function handleIncoming(payload) {
   processed.add(message.id);
   if (processed.size > 500) processed = new Set(Array.from(processed).slice(-250));
 
-  const phone = senderPhoneFromChat(message.chatId);
+  const phone = await resolveSenderPhone(message.chatId);
   if (!phone) return { ignored: 'no_phone' };
 
   const identity = await resolveIdentity(phone);
