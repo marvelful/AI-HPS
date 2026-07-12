@@ -77,6 +77,12 @@ app.add_middleware(
         "https://aihps.tech",
         "https://www.aihps.tech",
         "https://patient.aihps.tech",
+        # Installed Capacitor apps run from local WebView origins.
+        "capacitor://localhost",
+        "ionic://localhost",
+        "http://localhost",
+        "https://localhost",
+        "app://localhost",
     ],
     allow_credentials=True,
     allow_methods=["*"],
