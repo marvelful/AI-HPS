@@ -320,7 +320,12 @@ export default function AIAssistantScreen() {
   }, [storageKey]);
 
   useEffect(() => {
-    const prompt = searchParams.get('prompt')?.trim();
+    let storedPrompt = '';
+    try {
+      storedPrompt = sessionStorage.getItem('aihps_pending_guide_prompt')?.trim() || '';
+      if (storedPrompt) sessionStorage.removeItem('aihps_pending_guide_prompt');
+    } catch {}
+    const prompt = (searchParams.get('prompt')?.trim() || storedPrompt).trim();
     if (!prompt || lastPromptRef.current === prompt) return;
     lastPromptRef.current = prompt;
     setInput(prompt);

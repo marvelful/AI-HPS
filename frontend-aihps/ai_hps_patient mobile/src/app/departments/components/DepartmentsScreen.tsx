@@ -199,6 +199,11 @@ export default function DepartmentsScreen() {
               const hours = formatHours(dept.operating_hours);
               const isOpen = dept.is_active;
               const guidePrompt = `I am at the main entrance. Guide me to ${dept.name}.`;
+              const storeGuidePrompt = () => {
+                try {
+                  sessionStorage.setItem('aihps_pending_guide_prompt', guidePrompt);
+                } catch {}
+              };
 
               return (
                 <div key={dept?.id} className="card-base p-4">
@@ -239,6 +244,7 @@ export default function DepartmentsScreen() {
 
                       <Link
                         href={`/ai-assistant?prompt=${encodeURIComponent(guidePrompt)}`}
+                        onClick={storeGuidePrompt}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95"
                         style={{ background: 'var(--secondary-light)', color: 'var(--secondary)' }}
                       >
